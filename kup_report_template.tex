@@ -1,0 +1,90 @@
+\documentclass[10pt]{report}
+
+\usepackage{tikz}
+\usepackage{adjustbox}
+\usepackage{float}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{threeparttable}
+\usepackage{tabularx}
+\usepackage[paperheight=27.94cm,paperwidth=21.59cm,left=2.00cm,right=2.00cm,top=2.00cm,bottom=2.00cm]{geometry}
+\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue]{hyperref}
+
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+\setlength\parindent{0pt}
+\renewcommand{\arraystretch}{1.3}
+\pagestyle{empty} % Removes page numbers
+
+% Command to draw checkbox
+\newcommand{\checkbox}{
+	\tikz \draw[thick] (0,0) rectangle (0.5,0.5);
+}
+
+\begin{document}
+	\section*{FORMULARZ RAPORTU REJESTRACJI UTWORÓW DOTYCZĄCY MIESIĘCZNEGO OKRESU ROZLICZENIOWEGO}
+		
+	{\small Raport za Okres Rozliczeniowy (miesiąc) / \textit{Period covered by the Report (month)}: ==MONTH==}\newline
+	{\small Imię i nazwisko Autora / \textit{Author's full name}: Aliaksandr Fedaryna}\newline
+	{\small Stanowisko Autora / \textit{Author's job title}: Lead II, Software Development/Engineering}\newline
+	{\small Imię i nazwisko Kontrolera / \textit{Controller's full name}: Yauheni Bulychau}\newline
+	{\small Stanowisko Kontrolera / \textit{Controller's Job title}: LEAD III, SOFTWARE DEVELOPMENT/ENGINEERING}\newline
+	{\small Liczba dni roboczych w Okresie Rozliczeniowym / \textit{Number of working days in the Period}: ==DAYS== days}\newline
+	{\small Nieobecności Autora / \textit{Author's days of absence (working days)}: ==ABS== days}\newline
+	
+	\section*{SPECYFIKACJA STWORZONYCH UTWORÓW}
+		
+	\begin{table}[H]
+	\begin{threeparttable}
+	\begin{tabularx}{\textwidth}{|p{0.7cm}|L|L|L|L|L|}
+	\hline
+	{\small \textbf{Lp.}/\newline{\footnotesize\textit{(No.)}}} &
+	{\small \textbf{Nazwa Utworu i opis Utworu}\tnote{*} /\newline{\footnotesize\textit{(Created work title and short description)}}} &
+	{\small \textbf{Sygnatura/ Scieżka dostępu}\tnote{**} /\newline{\footnotesize\textit{(Signature/Access path)}}} &
+	{\small \textbf{Liczba godzin poświęconych na stworzenie utworu} /\newline{\footnotesize \textit{(number of hours spent on the creation of the work )}}} &
+	{\small \textbf{Data powstania utworu} /\newline{\footnotesize \textit{(date of creation of the work)}}} &
+	{\small \textbf{Osoba zlecająca wykonanie Utworu} /\newline{\footnotesize \textit{(Person commissioning the Work)}}} \\
+	\hline
+	==LINES==
+	\end{tabularx}
+	\begin{tablenotes}
+	\item[*] informacja pozwalająca na identyfikację utworu / \textit{information enabling the identification of the work};
+	\item[**] wskazanie sygnatury każdego z utworów nadanej zgodnie z zasadami obowiązującymi w Spółce lub ścieżki dostępu do każdego utworu zapisanego w zasobach sieciowych Spółki zgodnie z przyjętymi zasadami / \textit{indication of the signature of each work assigned in accordance with the rules applicable in the Company or the access path to each work saved in the Company's network resources in accordance with the Company rules}.
+	\end{tablenotes}
+	\end{threeparttable}
+	\end{table}
+	
+	\vspace{1 \baselineskip}
+	
+	
+	{\textbf{OŚWIADCZENIE}:} {\normalsize Potwierdzam, że Utwory dotyczą dziedziny wchodzącej w zakres działalności określonej w art. 22 ust. 9b Ustawy o PIT. Niniejszym potwierdzam, że zgłoszone przeze mnie Utwory, stanowiące wynik mojej działalności twórczej o indywidualnym charakterze chronione przepisami Ustawy, powstały w ramach mojej działalności twórczej w zakresie programów komputerowych w rozumieniu Ustawy o PIT. Wyrażam zgodę na anonimową publikację utworów, których jestem autorem i które zostały wyszczególnione powyżej oraz na ich dalsze opracowywanie przez Spółkę. Oświadczam również, że wymienione powyżej utwory nie stanowią plagiatu.}\newline
+	
+	{\textit{\textbf{STATEMENT}}:} {\small \textit{I confirm that the Works concern a field falling within the scope of activities specified in Art. 22 section 9b of the Personal Income Tax Act. I hereby confirm that the Works submitted by me, which are the result of my individual creative activity protected by the provisions of the Act, were created as part of my creative activity in the field of computer programs within the meaning of the Personal Income Tax Act. I consent to the anonymous publication of the works of which I am the Author, and which are listed above, and to their further development by the Company. I also declare that the works mentioned above do not constitute plagiarism.}}\newline
+	
+	\vspace*{\fill}
+	\noindent ........................................................ \hfill ..........................................\newline
+	\noindent {\small Podpis autora / \textit{(Signature of author)}} \hfill {\small Data, miejsce / \textit(Date, city)}
+
+	\newpage
+	
+	\section*{PRZYJĘCIE RAPORTU REJESTRACJI UTWORÓW}
+	
+	\vspace{1 \baselineskip}
+
+	\raisebox{-0.3em}\checkbox{Raport przyjęty / \textit{Report accepted}}
+	
+	\vspace{1 \baselineskip}
+		
+	\raisebox{-0.3em}\checkbox{Raport nieprzyjęty / \textit{Report not accepted} 
+		
+	\vspace{5 \baselineskip}
+	\subsection*{Uwagi Kontrolera do Raportu lub poszczególnych utworów:}
+	
+	\vspace*{\fill}
+	\noindent ........................................................ \hfill ..........................................\newline
+	\noindent {\small Podpis Kontrolera / \textit{(Controller's Signature)}} \hfill {\small Data, miejsce / \textit(Date, city)}
+	
+\end{document}
