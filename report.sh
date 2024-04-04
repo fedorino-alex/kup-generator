@@ -126,7 +126,3 @@ sed -i \
 pdflatex -interaction=batchmode $MONTH_TEMPLATE_FILE
 
 rm -f $MONTH_TEMPLATE_FILE _lines.txt
-
-
-# https://dev.azure.com/pdd-ihsmarkit/9b94b547-b630-4285-8553-966e8e8ec98e/_apis/git/repositories/28149a50-3d94-4cec-8092-ba1a2cc20365/pullRequests/99681/commits
-# authorization: Basic YWxpYWtzYW5kci5mZWRhcnluYUBpaHNtYXJraXQuY29tOnRnMm9ndWVtNmYydnN5ZjZjd2R5bnlzbDRnbHljMnR1dGZ1aTd2aHVzaWMzYWQ0Z2doeWE=
