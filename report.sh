@@ -8,6 +8,8 @@ AUTH=$(echo -n "$AUTHOR_EMAIL:$PAT" | base64 -w 0)
 TOTAL_HOURS="0"
 NUMBER="1"
 
+KUP_PATTERN='(?<=\[KUP:)\d+([\.,]\d+)?(?=\])'
+
 # START_DATE='2024-03-01T00:00:00.000000+00:00'
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
@@ -29,12 +31,32 @@ PULL_REQUESTS=$(az repos pr list -p EWB --status completed --creator $AUTHOR_ID 
 while read pr; do 
     # echo "Pull Request line: $pr"
 
-    # get KUP hours from PR line (title or description are searchable)
-    HOURS=$(grep -iPo '(?<=\[KUP:)\d+([\.,]\d+)?(?=\])' <<< "$pr")
+    # get KUP hours from PR (title, description and list of commits are searchable)
+    HOURS=$(grep -iPo $KUP_PATTERN <<< $pr)
     if [ -z "$HOURS" ]; then
-        echo "PR does not contain any KUP information, skipping..."
-        # TODO: try to find in commits...
-        continue
+        echo "PR does not contain any KUP information, checking all commits..."
+
+        PR_COMMITS_URL=$(jq -r '.url' <<< $pr)
+        PR_COMMITS=$(curl -s "$PR_COMMITS_URL/commits" -H "Authorization: Basic $AUTH" | jq -rc '.value[].comment')
+        PR_COMMITS_HOURS="0"
+
+        while read commit; do
+            # echo "$commit"
+
+            HOURS=$(grep -iPo $KUP_PATTERN <<< $commit)
+            if [ ! -z "$HOURS" ]; then
+                PR_COMMITS_HOURS=$(echo "$PR_COMMITS_HOURS + $HOURS" | bc)
+                # echo "PR_COMMITS_HOURS: $PR_COMMITS_HOURS"
+            fi
+        done <<< $PR_COMMITS
+
+        # echo "PR_COMMITS_HOURS: $PR_COMMITS_HOURS"
+        if [ "$PR_COMMITS_HOURS" == "0" ]; then
+            echo "Nothing find in commits, skip this PR"
+            continue
+        fi
+
+        $HOURS=$PR_COMMITS_HOURS
     fi
 
     HOURS_CELL="{\small $HOURS}"
@@ -104,3 +126,7 @@ sed -i \
 pdflatex -interaction=batchmode $MONTH_TEMPLATE_FILE
 
 rm -f $MONTH_TEMPLATE_FILE _lines.txt
+
+
+# https://dev.azure.com/pdd-ihsmarkit/9b94b547-b630-4285-8553-966e8e8ec98e/_apis/git/repositories/28149a50-3d94-4cec-8092-ba1a2cc20365/pullRequests/99681/commits
+# authorization: Basic YWxpYWtzYW5kci5mZWRhcnluYUBpaHNtYXJraXQuY29tOnRnMm9ndWVtNmYydnN5ZjZjd2R5bnlzbDRnbHljMnR1dGZ1aTd2aHVzaWMzYWQ0Z2doeWE=
