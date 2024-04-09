@@ -3,7 +3,7 @@
 AUTHOR='Aliaksandr Fedaryna'
 AUTHOR_ID='8bcc898b-e56e-48f5-be3c-d94c3ab67c1c'
 AUTHOR_EMAIL='aliaksandr.fedaryna@ihsmarkit.com'
-PAT='6cwrfxhui22d4pijds4nsv2glxwsi3llcuxhfg2fmxldc5yxsvta'
+PAT=''
 AUTH=$(echo -n "$AUTHOR_EMAIL:$PAT" | base64 -w 0)
 TOTAL_HOURS="0"
 NUMBER="1"
