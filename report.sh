@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # environment variables
-AUTHOR_EMAIL='aliaksandr.fedaryna@ihsmarkit.com'
+AUTHOR_EMAIL='aliaksandr.fedaryna@accuristech.com'
 PAT=''
 
 # constants
@@ -26,7 +26,7 @@ read PARAM_DAYS
 echo -n 'Authors days of absence: '
 read PARAM_ABS
 
-AUTHOR=$(az devops user list --query 'members[?user.mailAddress == `aliaksandr.fedaryna@accuristech.com`]' | jq '.[0]' -)
+AUTHOR=$(az devops user list --query 'members[?user.mailAddress == `'$AUTHOR_EMAIL'`]' | jq '.[0]' -)
 AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
 AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
 
