@@ -1,18 +1,22 @@
 #!/bin/bash
 
-AUTHOR='Aliaksandr Fedaryna'
-AUTHOR_ID='8bcc898b-e56e-48f5-be3c-d94c3ab67c1c'
+# environment variables
 AUTHOR_EMAIL='aliaksandr.fedaryna@ihsmarkit.com'
 PAT=''
+
+# constants
+ECHO_RED='\033[0;31m'
+ECHO_GREEN='\033[0;32m'
+ECHO_YELLOW='\033[0;33m'
+ECHO_CYAN='\033[0;36m' 
+ECHO_NC='\033[0m' # No Color
+
+#variables
+PROJECTS=(EWB PLC)
 AUTH=$(echo -n "$AUTHOR_EMAIL:$PAT" | base64 -w 0)
 TOTAL_HOURS="0"
 NUMBER="1"
-PROJECTS=(EWB PLC)
-
 KUP_PATTERN='(?<=\[KUP:)\d+([\.,]\d+)?(?=\])'
-
-# START_DATE='2024-03-01T00:00:00.000000+00:00'
-START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
 # reading input parameters
 PARAM_LINES=""
@@ -22,17 +26,18 @@ read PARAM_DAYS
 echo -n 'Authors days of absence: '
 read PARAM_ABS
 
-ECHO_RED='\033[0;31m'
-ECHO_GREEN='\033[0;32m'
-ECHO_YELLOW='\033[0;33m'
-ECHO_CYAN='\033[0;36m' 
-ECHO_NC='\033[0m' # No Color
+AUTHOR=$(az devops user list --query 'members[?user.mailAddress == `aliaksandr.fedaryna@accuristech.com`]' | jq '.[0]' -)
+AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
+AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
+
+# START_DATE='2024-03-01T00:00:00.000000+00:00'
+START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
 declare -A KNOWN_COMMITS
 
-rm -f "_lines.txt"
-
 echo "Searching PRs from $START_DATE..."
+
+rm -f "_lines.txt"
 
 for project in ${PROJECTS[@]}
 do
