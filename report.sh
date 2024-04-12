@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# environment variables
-AUTHOR_EMAIL='aliaksandr.fedaryna@accuristech.com'
-PAT=''
-
 # constants
 ECHO_RED='\033[0;31m'
 ECHO_GREEN='\033[0;32m'
@@ -11,33 +7,61 @@ ECHO_YELLOW='\033[0;33m'
 ECHO_CYAN='\033[0;36m' 
 ECHO_NC='\033[0m' # No Color
 
-#variables
-PROJECTS=(EWB PLC)
-AUTH=$(echo -n "$AUTHOR_EMAIL:$PAT" | base64 -w 0)
-TOTAL_HOURS="0"
-NUMBER="1"
-KUP_PATTERN='(?<=\[KUP:)\d+([\.,]\d+)?(?=\])'
-
-# reading input parameters
-PARAM_LINES=""
-PARAM_MONTH=$(date -d $START_DATE +%B)
-echo -n 'Working days in the Period: '
-read PARAM_DAYS
-echo -n 'Authors days of absence: '
-read PARAM_ABS
-
-AUTHOR=$(az devops user list --query 'members[?user.mailAddress == `'$AUTHOR_EMAIL'`]' | jq '.[0]' -)
-AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
-AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
+# test values 
+PARAM_DAYS="0"
+PARAM_ABS="0"
 
 # START_DATE='2024-03-01T00:00:00.000000+00:00'
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
+# environment variables
+AUTHOR_EMAIL='aliaksandr.fedaryna@accuristech.com'
+
+if [ -z $AUTHOR_EMAIL ]; then
+    echo -e "${ECHO_RED}Environment variable AUTHOR_EMAIL is not set${ECHO_NC}"
+    exit 1
+fi
+
+if [ -z $AZURE_DEVOPS_EXT_PAT ]; then
+    echo -e "${ECHO_RED}Environment variable AZURE_DEVOPS_EXT_PAT is not set${ECHO_NC}"
+    exit 1
+fi 
+
+if [ ! -d ./out ]; then
+    echo -e "${ECHO_RED}Please mount output volume '{host_dir}:$(pwd)/out:rw'${ECHO_NC}"
+    exit 1
+fi
+
+#variables
+PROJECTS=(EWB PLC)
+AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
+TOTAL_HOURS="0"
+NUMBER="1"
+KUP_PATTERN='(?<=\[KUP:)\d+([\.,]\d+)?(?=\])'
 declare -A KNOWN_COMMITS
 
-echo "Searching PRs from $START_DATE..."
+# reading input parameters
+PARAM_LINES=""
+PARAM_MONTH=$(date -d $START_DATE +%B)
+
+if [ -z $PARAM_DAYS ]; then
+    echo -n 'Working days in the Period: '
+    read PARAM_DAYS
+fi
+
+if [ -z $PARAM_ABS ]; then
+    echo -n 'Authors days of absence: '
+    read PARAM_ABS
+fi
+
+# get author id and display name
+AUTHOR=$(az devops user list --query 'members[?user.mailAddress == `'$AUTHOR_EMAIL'`]' | jq '.[0]' -)
+AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
+AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
 
 rm -f "_lines.txt"
+
+echo "Searching PRs from $START_DATE..."
 
 for project in ${PROJECTS[@]}
 do
@@ -149,9 +173,9 @@ echo
 echo "PRs have been collected"
 
 MONTH_TEMPLATE_FILE="$(date +%Y-%m).tex"
-cp -f "kup_report_template.tex" "$MONTH_TEMPLATE_FILE"
+cp -f "kup_report_template.tex" "$(pwd)/out/$MONTH_TEMPLATE_FILE"
 
-echo "Report template copied to $MONTH_TEMPLATE_FILE"
+echo "Report template copied to $(pwd)/out/$MONTH_TEMPLATE_FILE"
 
 # replace ==PLACEHOLDERS== with their values
 sed -i \
@@ -160,9 +184,9 @@ sed -i \
     -e "s/==ABS==/$PARAM_ABS/" \
     -e "/==LINES==/{r _lines.txt
     d}" \
-    $MONTH_TEMPLATE_FILE
+    ./out/$MONTH_TEMPLATE_FILE
 
 # Run pdf creation
-pdflatex -interaction=batchmode $MONTH_TEMPLATE_FILE
+pdflatex -interaction=batchmode ./out/$MONTH_TEMPLATE_FILE
 
-rm -f $MONTH_TEMPLATE_FILE _lines.txt
+rm -f ./out/$MONTH_TEMPLATE_FILE _lines.txt

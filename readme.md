@@ -3,9 +3,13 @@ Collects all pull requests for current month and prepare PDF report according to
 
 # Prerequisites
 1. `pdflatex` tool;
-2. `az devops` tool;
-3. `az devops login` and provide your PAT token with ability to access repos and workitems;
-4. Update `AUTHOR`, `AUTHOR_ID`, `AUTHOR_EMAIL`, `PAT` in [report.sh](report.sh) to your actual values
+2. `azure-cli` tool;
+3. `az devops` extension;
+4. `jq` tool;
+s
+# Environment
+1. `AUTHOR_EMAIL` contains email of PRs author;
+2. `AZURE_DEVOPS_EXT_PAT` contains Personal Access Token (PAT) to azure devops portal.
 
 # Calculations
 1. List of all pull requests sorts by creation date (ascending);
