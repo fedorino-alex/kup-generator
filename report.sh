@@ -16,12 +16,12 @@ START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
 # environment variables
 AUTHOR_EMAIL='aliaksandr.fedaryna@accuristech.com'
-
 if [ -z $AUTHOR_EMAIL ]; then
     echo -e "${ECHO_RED}Environment variable AUTHOR_EMAIL is not set${ECHO_NC}"
     exit 1
 fi
 
+AZURE_DEVOPS_EXT_PAT=$(grep -iPo '(?<=personal access token = ).+(?=$)' ~/.azure/azuredevops/personalAccessTokens)
 if [ -z $AZURE_DEVOPS_EXT_PAT ]; then
     echo -e "${ECHO_RED}Environment variable AZURE_DEVOPS_EXT_PAT is not set${ECHO_NC}"
     exit 1
@@ -87,30 +87,34 @@ do
         PR_COMMITS=$(curl -s "$PR_COMMITS_URL/commits" -H "Authorization: Basic $AUTH" | jq -c '.value[] | {id: .commitId, comment: .comment}')
         PR_COMMITS_HOURS="0"
 
-        while read commit; do
-            COMMIT_ID=$(jq -r '.id' <<< $commit)
-            COMMIT_COMMENT=$(jq -r '.comment' <<< $commit)
+        if [ -z "$PR_COMMITS" ]; then
+            echo -e "${ECHO_RED}No commits discovered${ECHO_NC}"
+        else
+            while read commit; do
+                COMMIT_ID=$(jq -r '.id' <<< $commit)
+                COMMIT_COMMENT=$(jq -r '.comment' <<< $commit)
 
-            if [ ! -z "${KNOWN_COMMITS[${COMMIT_ID}]}" ]; then
-                echo -e "${ECHO_YELLOW}Skip commit $COMMIT_ID: $COMMIT_COMMENT as KNOWN${ECHO_NC}"
-                continue
-            fi
-
-            echo -e "${ECHO_GREEN}$COMMIT_ID: $COMMIT_COMMENT${ECHO_NC}"
-
-            KNOWN_COMMITS[$COMMIT_ID]=$COMMIT_COMMENT # add commit to knowns to avoid multiple participations
-            # echo "Commit added to KNOWN $COMMIT_ID: $COMMIT_COMMENT"
-
-            if [ -z "$HOURS" ]; then
-                HOURS=$(grep -iPo $KUP_PATTERN <<< $COMMIT_COMMENT)
-
-                if [ ! -z "$HOURS" ]; then
-                    PR_COMMITS_HOURS=$(echo "$PR_COMMITS_HOURS + $HOURS" | bc)
+                if [ ! -z "${KNOWN_COMMITS[${COMMIT_ID}]}" ]; then
+                    echo -e "${ECHO_YELLOW}Skip commit $COMMIT_ID: $COMMIT_COMMENT as KNOWN${ECHO_NC}"
+                    continue
                 fi
 
-                HOURS=""
-            fi
-        done <<< $PR_COMMITS
+                echo -e "${ECHO_GREEN}$COMMIT_ID: $COMMIT_COMMENT${ECHO_NC}"
+
+                KNOWN_COMMITS[$COMMIT_ID]=$COMMIT_COMMENT # add commit to knowns to avoid multiple participations
+                # echo "Commit added to KNOWN $COMMIT_ID: $COMMIT_COMMENT"
+
+                if [ -z "$HOURS" ]; then
+                    HOURS=$(grep -iPo $KUP_PATTERN <<< $COMMIT_COMMENT)
+
+                    if [ ! -z "$HOURS" ]; then
+                        PR_COMMITS_HOURS=$(echo "$PR_COMMITS_HOURS + $HOURS" | bc)
+                    fi
+
+                    HOURS=""
+                fi
+            done <<< $PR_COMMITS
+        fi
 
         if [ -z "$HOURS" ]; then
             if [ "$PR_COMMITS_HOURS" == "0" ]; then
@@ -187,6 +191,6 @@ sed -i \
     ./out/$MONTH_TEMPLATE_FILE
 
 # Run pdf creation
-pdflatex -interaction=batchmode ./out/$MONTH_TEMPLATE_FILE
+pdflatex -interaction=batchmode -output-directory=./out ./out/$MONTH_TEMPLATE_FILE > /dev/null 2>&1
 
 rm -f ./out/$MONTH_TEMPLATE_FILE _lines.txt
