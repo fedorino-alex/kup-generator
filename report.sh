@@ -193,4 +193,5 @@ sed -i \
 # Run pdf creation
 pdflatex -interaction=batchmode -output-directory=./out ./out/$MONTH_TEMPLATE_FILE > /dev/null 2>&1
 
-rm -f ./out/$MONTH_TEMPLATE_FILE _lines.txt
+# remove everything except PDF
+find ./out/ -maxdepth 1 -type f ! -name '*.pdf' -exec rm -f {} +
