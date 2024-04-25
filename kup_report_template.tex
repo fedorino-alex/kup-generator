@@ -1,5 +1,10 @@
 \documentclass[10pt]{report}
 
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{dcolumn}
 \usepackage{tikz}
 \usepackage{adjustbox}
 \usepackage{float}
@@ -8,12 +13,13 @@
 \usepackage[utf8]{inputenc}
 \usepackage{multicol}
 \usepackage{multirow}
-\usepackage{threeparttable}
-\usepackage{tabularx}
-\usepackage[paperheight=27.94cm,paperwidth=21.59cm,left=1.00cm,right=1.00cm,top=2.00cm,bottom=2.00cm]{geometry}
 \usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue]{hyperref}
+\usepackage[paperheight=27.94cm,paperwidth=21.59cm,left=1.00cm,right=1.00cm,top=2.00cm,bottom=2.00cm]{geometry}
 
-\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+%\usepackage{showframe}% don't use in real document
+%\renewcommand*\ShowFrameColor{\color{red}}% don't use in real document
+
+\newcolumntype{P}[1]{>{\RaggedRight\arraybackslash}p{#1}}
 
 \setlength\parindent{0pt}
 \renewcommand{\arraystretch}{1.3}
