@@ -1,5 +1,6 @@
 \documentclass[10pt]{report}
 
+\usepackage[raggedright]{titlesec}
 \usepackage{threeparttable}
 \usepackage{threeparttablex}
 \usepackage{longtable}
@@ -45,16 +46,12 @@
 		
 	\begin{ThreePartTable}
 
-	  	\begin{TableNotes}
-	  		\item[*] informacja pozwalająca na identyfikację utworu / \textit{information enabling the identification of the work};
-	  		\item[**] wskazanie sygnatury każdego z utworów nadanej zgodnie z zasadami obowiązującymi w Spółce lub ścieżki dostępu do każdego utworu zapisanego w zasobach sieciowych Spółki zgodnie z przyjętymi zasadami / \textit{indication of the signature of each work assigned in accordance with the rules applicable in the Company or the access path to each work saved in the Company's network resources in accordance with the Company rules}.
-		\end{TableNotes}
+		\setlength\LTleft{0pt}
+		\setlength\LTright{0pt}
 
-	  	\setlength\LTleft{0pt}
-	  	\setlength\LTright{0pt}
-	  	\begin{longtable}{@{\extracolsep{\fill}}|P{0.7cm}|P{5cm}|P{5cm}|P{2.3cm}|P{1.8cm}|P{2cm}|}	
+		\begin{longtable}{@{\extracolsep{\fill}}|P{0.8cm}|P{5cm}|P{5cm}|P{2.3cm}|P{1.8cm}|P{2cm}|}
 % -------------------------------------------------------------------------------------------- %
-   			\toprule
+			\toprule
 			{\small \textbf{Lp.}/\newline{\footnotesize\textit{(No.)}}} &
 			{\small \textbf{Nazwa Utworu i opis Utworu}\tnote{*} /\newline{\footnotesize\textit{(Created work title and short description)}}} &
 			{\small \textbf{Sygnatura/ Scieżka dostępu}\tnote{**} /\newline{\footnotesize\textit{(Signature/Access path)}}} &
@@ -62,19 +59,31 @@
 			{\small \textbf{Data powstania utworu} /\newline{\footnotesize \textit{(date of creation of the work)}}} &
 			{\small \textbf{Osoba zlecająca wykonanie Utworu} /\newline{\footnotesize \textit{(Person commissioning the Work)}}} \\
 			\midrule
+			\endfirsthead
+% -------------------------------------------------------------------------------------------- %
+			\toprule
+			{\small \textbf{Lp.}/\newline{\footnotesize\textit{(No.)}}} &
+			{\small \textbf{Nazwa Utworu i opis Utworu}\tnote{*} /\newline{\footnotesize\textit{(Created work title and short description)}}} &
+			{\small \textbf{Sygnatura/ Scieżka dostępu}\tnote{**} /\newline{\footnotesize\textit{(Signature/Access path)}}} &
+			{\small \textbf{Liczba godzin poświęconych na stworzenie utworu} /\newline{\footnotesize \textit{(number of hours spent on the creation of the work )}}} &
+			{\small \textbf{Data powstania utworu} /\newline{\footnotesize \textit{(date of creation of the work)}}} &
+			{\small \textbf{Osoba zlecająca wykonanie Utworu} /\newline{\footnotesize \textit{(Person commissioning the Work)}}} \\
 			\endhead
 % -------------------------------------------------------------------------------------------- %
-			\midrule
-			\multicolumn{6}{r}{{Continued on next page}} \\
+			\multicolumn{6}{|r|}{{Continued on next page}} \\
 			\midrule
 			\endfoot
-			\bottomrule
-			\insertTableNotes
-			\endlastfoot   
 % -------------------------------------------------------------------------------------------- %
-		==LINES==
+			\endlastfoot
+% -------------------------------------------------------------------------------------------- %
+			==LINES==
 % -------------------------------------------------------------------------------------------- %
 		\end{longtable}
+
+		\begin{tablenotes}
+			\item[*] informacja pozwalająca na identyfikację utworu / \textit{information enabling the identification of the work};
+			\item[**] wskazanie sygnatury każdego z utworów nadanej zgodnie z zasadami obowiązującymi w Spółce lub ścieżki dostępu do każdego utworu zapisanego w zasobach sieciowych Spółki zgodnie z przyjętymi zasadami / \textit{indication of the signature of each work assigned in accordance with the rules applicable in the Company or the access path to each work saved in the Company's network resources in accordance with the Company rules}.
+		\end{tablenotes}
 	\end{ThreePartTable}
 	
 	\vspace{1 \baselineskip}
@@ -104,6 +113,6 @@
 	
 	\vspace*{\fill}
 	\noindent ........................................................ \hfill ..........................................\newline
-	\noindent {\small Podpis Kontrolera / \textit{(Controller's Signature)}} \hfill {\small Data, miejsce / \textit(Date, city)}
+	\noindent {\small Podpis Kontrolera / \textit{(Controller's Signature)}} \hfill {\small Data, miejsce / \textit(Date, city)}
 	
 \end{document}
