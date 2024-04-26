@@ -7,10 +7,6 @@ ECHO_YELLOW='\033[0;33m'
 ECHO_CYAN='\033[0;36m' 
 ECHO_NC='\033[0m' # No Color
 
-# test values 
-PARAM_DAYS="0"
-PARAM_ABS="0"
-
 # START_DATE='2024-03-01T00:00:00.000000+00:00'
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
@@ -163,7 +159,7 @@ do
         # echo "PR_DATE_CELL: $PR_DATE_CELL"
 
         # collecting all table lines in separate file to easy replace in pdf template
-        echo "$NUMBER & $PR_CELL & $WORKITEM_CELL & $HOURS_CELL & $PR_DATE_CELL & $OWNER_CELL \\\\" >> _lines.txt
+        echo "$NUMBER & $WORKITEM_CELL & $PR_CELL & $HOURS_CELL & $PR_DATE_CELL & $OWNER_CELL \\\\" >> _lines.txt
         echo "\hline" >> _lines.txt
 
         # Increase TOTAL_HOURS
