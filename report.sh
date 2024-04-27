@@ -55,10 +55,12 @@ AUTHOR=$(az devops user list --query 'members[?user.mailAddress == `'$AUTHOR_EMA
 AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
 AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
 
+echo
 echo "AUTHOR: $AUTHOR_DISPLAY"
 echo "AUTHOR_TITLE: $AUTHOR_TITLE"
 echo "MANAGER: $MANAGER"
 echo "MANAGER_TITLE: $MANAGER_TITLE"
+echo
 
 rm -f "_lines.txt"
 
