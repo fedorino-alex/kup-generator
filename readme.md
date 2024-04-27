@@ -17,22 +17,23 @@ az login
 az devops login
 ```
 
-# Run docker image
+# Run docker-compose
+
+## Update docker-compose environments
+1. `AUTHOR_EMAIL` contains your email for searching PRs;
+2. `AUTHOR_TITLE` is your title;
+3. `MANAGER` is your manager full name;
+4. `MANAGER_TITLE` is your manager's title;
+
+## Mount requred volumes
+1. Mount `~/.azure` folder, all your credentials tokens and auth information. Please use absolute path when mounting folder; 
+2. Mount `out` folder for storing results;
+
+## Run docker-compose
 
 ``` bash
-docker run -it \
-    -v <PATH_TO_PERSONAL_FOLDER>/.azure:/root/.azure \
-    -v "$(pwd)/out:/kup/out:rw" \
-    -e AUTHOR_EMAIL=<AUTHOR_EMAIL> \
-    fedorinoalex/kup-generator
+docker-compose run --rm -- kup
 ```
-
-## Environment variables
-1. `AUTHOR_EMAIL` contains email of PRs author;
-
-## Volumes
-1. Mount `~/.azure` folder, all your credentials tokens and auth information;
-2. Mount `out` folder for storing results;
 
 # How it works 
 Tool searches declared hours `[KUP:<HOURS>]` like this: `[KUP:1]` or `[kup:4.5]` in PRs and its commits messages, and build report in form of PDF file.
