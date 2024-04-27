@@ -3,7 +3,7 @@ version: '3.8'
 services:
   kup:
     container_name: kup
-    build: .
+    image: fedorinoalex/kup-generator:latest
     volumes:
       - /home/alexf/.azure:/root/.azure
       - ./out:/kup/out
