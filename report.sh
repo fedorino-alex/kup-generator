@@ -55,6 +55,11 @@ AUTHOR=$(az devops user list --query 'members[?user.mailAddress == `'$AUTHOR_EMA
 AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
 AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
 
+echo "AUTHOR: $AUTHOR_DISPLAY"
+echo "AUTHOR_TITLE: $AUTHOR_TITLE"
+echo "MANAGER: $MANAGER"
+echo "MANAGER_TITLE: $MANAGER_TITLE"
+
 rm -f "_lines.txt"
 
 echo "Searching PRs from $START_DATE..."
@@ -179,9 +184,13 @@ echo "Report template copied to $(pwd)/out/$MONTH_TEMPLATE_FILE"
 
 # replace ==PLACEHOLDERS== with their values
 sed -i \
-    -e "s/==MONTH==/$PARAM_MONTH/" \
-    -e "s/==DAYS==/$PARAM_DAYS/" \
-    -e "s/==ABS==/$PARAM_ABS/" \
+    -e "s|==AUTHOR==|$AUTHOR_DISPLAY|" \
+    -e "s|==AUTHOR_TITLE==|$AUTHOR_TITLE|" \
+    -e "s|==MANAGER==|$MANAGER|" \
+    -e "s|==MANAGER_TITLE==|$MANAGER_TITLE|" \
+    -e "s|==MONTH==|$PARAM_MONTH|" \
+    -e "s|==DAYS==|$PARAM_DAYS|" \
+    -e "s|==ABS==|$PARAM_ABS|" \
     -e "/==LINES==/{r _lines.txt
     d}" \
     ./out/$MONTH_TEMPLATE_FILE
