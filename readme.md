@@ -40,6 +40,7 @@ Tool searches declared hours `[KUP:<HOURS>]` like this: `[KUP:1]` or `[kup:4.5]`
 
 1. List of all pull requests sorts by creation date (ascending) and filtered by **current** month and PR author (`AUTHOR_EMAIL`);
 2. Checks title and description of PR, if declared hours found in this places - then calculation stops and all commits marked as handled and go to the next PR;
-3. Iterate over unhandled commits and find hours in title (comment). Sum all hours from commits;
-4. No hours found in all places - skip current PR and move to the next one.
-5. After processing all PRs - build PDF report.
+3. Checks PR tags and looking for something like `[KUP:1]`;
+4. Iterate over unhandled commits and find hours in title (comment). Sum all hours from commits;
+5. No hours found in all places - skip current PR and move to the next one.
+6. After processing all PRs - build PDF report.
