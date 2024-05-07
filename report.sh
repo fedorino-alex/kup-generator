@@ -5,6 +5,7 @@ ECHO_RED='\033[0;31m'
 ECHO_GREEN='\033[0;32m'
 ECHO_YELLOW='\033[0;33m'
 ECHO_CYAN='\033[0;36m' 
+ECHO_GREY='\033[0;90m' 
 ECHO_NC='\033[0m' # No Color
 
 # START_DATE='2024-03-01T00:00:00.000000+00:00'
@@ -33,7 +34,7 @@ PROJECTS=(EWB PLC)
 AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
 TOTAL_HOURS="0"
 NUMBER="1"
-KUP_PATTERN='(?<=\[KUP:)\d+([\.,]\d+)?(?=\])'
+KUP_PATTERN='(?<=\[KUP:)\s*\d+([\.,]\d+)?(?=\])'
 declare -A KNOWN_COMMITS
 
 # reading input parameters
@@ -75,19 +76,29 @@ do
     --query '[?closedDate > `'$START_DATE'`].{title: title, description: description, id: pullRequestId, url: url, closedDate: closedDate}' | jq -rc 'sort_by(.closedDate) | .[]' -)
 
     while read pr; do 
+        PR_URL=$(jq -r '.url' <<< $pr)
         echo # empty line
+        #echo -e "${ECHO_CYAN}$PR_URL${ECHO_NC}"
         echo -e "${ECHO_CYAN}$(jq -r '"\(.id) \(.title)"' <<< $pr)${ECHO_NC}"
 
         # get KUP hours from PR (title, description and list of commits are searchable)
-        HOURS=$(grep -iPo $KUP_PATTERN <<< $pr)
+        HOURS=$(grep -iPo $KUP_PATTERN <<< $pr | xargs)
         # echo -e "${ECHO_RED}DEBUG${ECHO_NC}: HOURS=$HOURS"
 
-        if [ -z "$HOURS" ]; then
-            echo "PR does not contain any KUP information, checking all commits..."
+        if [ ! -z "$HOURS" ]; then
+            echo -e "${ECHO_YELLOW}Hours found in PR Title or Description${ECHO_NC}"
         fi
 
-        PR_COMMITS_URL=$(jq -r '.url' <<< $pr)
-        PR_COMMITS=$(curl -s "$PR_COMMITS_URL/commits" -H "Authorization: Basic $AUTH" | jq -c '.value[] | {id: .commitId, comment: .comment}')
+        if [ -z "$HOURS" ]; then
+            PR_TAGS=$(curl -s "$PR_URL/labels" -H "Authorization: Basic $AUTH" | jq -c '.value[].name')
+            HOURS=$(grep -iPo $KUP_PATTERN <<< $PR_TAGS | xargs)
+
+            if [ ! -z "$HOURS" ]; then
+                echo -e "${ECHO_YELLOW}Hours found in PR Tags${ECHO_NC}"
+            fi
+        fi
+
+        PR_COMMITS=$(curl -s "$PR_URL/commits" -H "Authorization: Basic $AUTH" | jq -c '.value[] | {id: .commitId, comment: .comment}')
         PR_COMMITS_HOURS="0"
 
         if [ -z "$PR_COMMITS" ]; then
@@ -102,13 +113,13 @@ do
                     continue
                 fi
 
-                echo -e "${ECHO_GREEN}$COMMIT_ID: $COMMIT_COMMENT${ECHO_NC}"
+                echo -e "${ECHO_GREY}$COMMIT_ID: $COMMIT_COMMENT${ECHO_NC}"
 
                 KNOWN_COMMITS[$COMMIT_ID]=$COMMIT_COMMENT # add commit to knowns to avoid multiple participations
                 # echo "Commit added to KNOWN $COMMIT_ID: $COMMIT_COMMENT"
 
                 if [ -z "$HOURS" ]; then
-                    HOURS=$(grep -iPo $KUP_PATTERN <<< $COMMIT_COMMENT)
+                    HOURS=$(grep -iPo $KUP_PATTERN <<< $COMMIT_COMMENT | xargs)
 
                     if [ ! -z "$HOURS" ]; then
                         PR_COMMITS_HOURS=$(echo "$PR_COMMITS_HOURS + $HOURS" | bc)
@@ -121,14 +132,18 @@ do
 
         if [ -z "$HOURS" ]; then
             if [ "$PR_COMMITS_HOURS" == "0" ]; then
-                echo -e "${ECHO_RED}Nothing find in commits, skip this PR${ECHO_NC}"
+                echo -e "${ECHO_RED}KUP has not been found, skip this PR${ECHO_NC}"
                 continue
             fi
 
             HOURS=$PR_COMMITS_HOURS
+
+            if [ ! -z "$HOURS" ]; then
+                echo -e "${ECHO_YELLOW}Hours found in PR Commits${ECHO_NC}"
+            fi
         fi
 
-        echo "HOURS: $HOURS"
+        echo -e "${ECHO_GREEN}HOURS: $HOURS${ECHO_NC}"
         HOURS_CELL="{\small $HOURS}"
 
         # get info about PR and try read KUP from title or description
@@ -177,7 +192,9 @@ do
 done
 
 echo
-echo "PRs have been collected"
+echo "PRs have been collected!"
+echo -e "${ECHO_GREEN}Total hours for this month: $TOTAL_HOURS${ECHO_NC}"
+echo
 
 MONTH_TEMPLATE_FILE="$(date +%Y-%m).tex"
 cp -f "kup_report_template.tex" "$(pwd)/out/$MONTH_TEMPLATE_FILE"
