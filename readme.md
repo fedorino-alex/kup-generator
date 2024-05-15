@@ -1,33 +1,17 @@
 # KUP Report generator
 Collects all pull requests for current month and prepare PDF report according to provided template. Track only PRs, where `[KUP:<hours>]` text is in **title** or **description** fields. PDF file builds from LaTeX template.
 
-# Prerequisites
-
-## Local tools
-
-1. `azure-cli` tool;
-2. `az devops` extension;
-
-## Actions
-
-Before run `kup-generator` you must be logged in to Azure CLI and Azure Devops extensions on your host operation system. After you logged in - tools will create folder `.azure` in your personal folder. This folder must be mounted as volume to docker container.
-
-```bash
-az login
-az devops login
-```
-
 # Run docker-compose
 
 ## Update docker-compose environments
-1. `AUTHOR_EMAIL` contains your email for searching PRs;
-2. `AUTHOR_TITLE` is your title;
-3. `MANAGER` is your manager full name;
-4. `MANAGER_TITLE` is your manager's title;
+1. `AZURE_DEVOPS_EXT_PAT` personal access token to Azure DevOps portal with all scopes (later will define only required)
+2. `AUTHOR_EMAIL` contains your email for searching PRs;
+3. `AUTHOR_TITLE` is your title;
+4. `MANAGER` is your manager full name;
+5. `MANAGER_TITLE` is your manager's title;
 
 ## Mount requred volumes
-1. Mount `~/.azure` folder, all your credentials tokens and auth information. Please use absolute path when mounting folder; 
-2. Mount `out` folder for storing results;
+1. Mount `out` folder for storing results;
 
 ## Run docker-compose
 
