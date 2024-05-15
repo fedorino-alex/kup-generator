@@ -12,17 +12,15 @@ ECHO_NC='\033[0m' # No Color
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
 # environment variables
-AUTHOR_EMAIL='aliaksandr.fedaryna@accuristech.com'
 if [ -z $AUTHOR_EMAIL ]; then
     echo -e "${ECHO_RED}Environment variable AUTHOR_EMAIL is not set${ECHO_NC}"
     exit 1
 fi
 
-AZURE_DEVOPS_EXT_PAT=$(grep -iPo '(?<=personal access token = ).+(?=$)' ~/.azure/azuredevops/personalAccessTokens)
 if [ -z $AZURE_DEVOPS_EXT_PAT ]; then
     echo -e "${ECHO_RED}Environment variable AZURE_DEVOPS_EXT_PAT is not set${ECHO_NC}"
     exit 1
-fi 
+fi
 
 if [ ! -d ./out ]; then
     echo -e "${ECHO_RED}Please mount output volume '{host_dir}:$(pwd)/out:rw'${ECHO_NC}"
