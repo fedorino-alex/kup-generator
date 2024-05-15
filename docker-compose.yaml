@@ -5,9 +5,9 @@ services:
     container_name: kup
     image: fedorinoalex/kup-generator:latest
     volumes:
-      - /home/alexf/.azure:/root/.azure
       - ./out:/kup/out
     environment:
+      - AZURE_DEVOPS_EXT_PAT=
       - AUTHOR_EMAIL=aliaksandr.fedaryna@accuristech.com
       - AUTHOR_TITLE=LEAD II, SOFTWARE DEVELOPMENT/ENGINEERING
       - MANAGER=Yauheni Bulychau
