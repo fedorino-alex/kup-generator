@@ -12,17 +12,15 @@ ECHO_NC='\033[0m' # No Color
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
 # environment variables
-AUTHOR_EMAIL='aliaksandr.fedaryna@accuristech.com'
-if [ -z $AUTHOR_EMAIL ]; then
+if [ -z "$AUTHOR_EMAIL" ]; then
     echo -e "${ECHO_RED}Environment variable AUTHOR_EMAIL is not set${ECHO_NC}"
     exit 1
 fi
 
-AZURE_DEVOPS_EXT_PAT=$(grep -iPo '(?<=personal access token = ).+(?=$)' ~/.azure/azuredevops/personalAccessTokens)
-if [ -z $AZURE_DEVOPS_EXT_PAT ]; then
+if [ -z "$AZURE_DEVOPS_EXT_PAT" ]; then
     echo -e "${ECHO_RED}Environment variable AZURE_DEVOPS_EXT_PAT is not set${ECHO_NC}"
     exit 1
-fi 
+fi
 
 if [ ! -d ./out ]; then
     echo -e "${ECHO_RED}Please mount output volume '{host_dir}:$(pwd)/out:rw'${ECHO_NC}"
@@ -30,7 +28,6 @@ if [ ! -d ./out ]; then
 fi
 
 #variables
-PROJECTS=(EWB PLC)
 AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
 TOTAL_HOURS="0"
 NUMBER="1"
@@ -41,15 +38,17 @@ declare -A KNOWN_COMMITS
 PARAM_LINES=""
 PARAM_MONTH=$(date -d $START_DATE +%B)
 
-if [ -z $PARAM_DAYS ]; then
+if [ -z "$PARAM_DAYS" ]; then
     echo -n 'Working days in the Period: '
     read PARAM_DAYS
 fi
 
-if [ -z $PARAM_ABS ]; then
+if [ -z "$PARAM_ABS" ]; then
     echo -n 'Authors days of absence: '
     read PARAM_ABS
 fi
+
+rm -f "_lines.txt"
 
 # get author id and display name
 AUTHOR=$(az devops user list --query 'members[?user.mailAddress == `'$AUTHOR_EMAIL'`]' | jq '.[0]' -)
@@ -63,17 +62,20 @@ echo "MANAGER: $MANAGER"
 echo "MANAGER_TITLE: $MANAGER_TITLE"
 echo
 
-rm -f "_lines.txt"
-
 echo "Searching PRs from $START_DATE..."
 
-for project in ${PROJECTS[@]}
-do
+PROJECTS=$(az devops project list | jq -r '.value[].name')
+while read project; do
     echo # empty line
     echo "Searching project $project..."
 
-    PULL_REQUESTS=$(az repos pr list -p $project --status completed --creator $AUTHOR_ID \
+    PULL_REQUESTS=$(az repos pr list -p "$project" --status completed --creator $AUTHOR_ID \
     --query '[?closedDate > `'$START_DATE'`].{title: title, description: description, id: pullRequestId, url: url, closedDate: closedDate}' | jq -rc 'sort_by(.closedDate) | .[]' -)
+
+    if [ -z "$PULL_REQUESTS" ]; then
+        echo -e "${ECHO_RED}No Pull requests found in this project, moving next...${ECHO_NC}"
+        continue
+    fi
 
     while read pr; do 
         PR_URL=$(jq -r '.url' <<< $pr)
@@ -109,11 +111,11 @@ do
                 COMMIT_COMMENT=$(jq -r '.comment' <<< $commit)
 
                 if [ ! -z "${KNOWN_COMMITS[${COMMIT_ID}]}" ]; then
-                    echo -e "${ECHO_YELLOW}Skip commit $COMMIT_ID: $COMMIT_COMMENT as KNOWN${ECHO_NC}"
+                    echo -e "${ECHO_YELLOW}[IGNORE]\t$COMMIT_ID: $COMMIT_COMMENT as KNOWN${ECHO_NC}"
                     continue
                 fi
 
-                echo -e "${ECHO_GREY}$COMMIT_ID: $COMMIT_COMMENT${ECHO_NC}"
+                echo -e "${ECHO_GREY}[INCLUDE]\t$COMMIT_ID: $COMMIT_COMMENT${ECHO_NC}"
 
                 KNOWN_COMMITS[$COMMIT_ID]=$COMMIT_COMMENT # add commit to knowns to avoid multiple participations
                 # echo "Commit added to KNOWN $COMMIT_ID: $COMMIT_COMMENT"
@@ -189,7 +191,7 @@ do
         # Increase line number
         NUMBER=$((NUMBER + 1))
     done <<< $PULL_REQUESTS
-done
+done <<< $PROJECTS
 
 echo
 echo "PRs have been collected!"
