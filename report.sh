@@ -11,10 +11,9 @@ ECHO_NC='\033[0m' # No Color
 # START_DATE='2024-03-01T00:00:00.000000+00:00'
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
-# if [ ! -z "$DEBUG" ]; then
-#     DEBUG=1
-#     echo -e "${ECHO_GREY}DEBUG: You set DEBUG evironment variable, we run in debug mode${ECHO_NC}"
-# fi
+if [[  "$DEBUG" == 1 ]]; then
+    echo -e "${ECHO_GREY}DEBUG: You set DEBUG evironment variable, we run in debug mode${ECHO_NC}"
+fi
 
 # environment variables
 if [ -z "$AUTHOR_EMAIL" ]; then
@@ -35,10 +34,10 @@ fi
 #variables
 AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
 
-# if [ $DEGUG -eq 1 ]; then
-#     echo -e "${ECHO_GREY}DEBUG: AZURE_DEVOPS_EXT_PAT = $AZURE_DEVOPS_EXT_PAT${ECHO_NC}"
-#     echo -e "${ECHO_GREY}DEBUG: AUTH = $AUTH${ECHO_NC}"
-# fi
+if [[ "$DEBUG" == 1 ]]; then
+    echo -e "${ECHO_GREY}DEBUG: AZURE_DEVOPS_EXT_PAT = $AZURE_DEVOPS_EXT_PAT${ECHO_NC}"
+    echo -e "${ECHO_GREY}DEBUG: AUTH = $AUTH${ECHO_NC}"
+fi
 
 TOTAL_HOURS="0"
 NUMBER="1"
@@ -92,35 +91,85 @@ while read project; do
     while read pr; do 
         PR_URL=$(jq -r '.url' <<< $pr)
         echo # empty line
-        #echo -e "${ECHO_CYAN}$PR_URL${ECHO_NC}"
         echo -e "${ECHO_CYAN}$(jq -r '"\(.id) \(.title)"' <<< $pr)${ECHO_NC}"
 
-        # get KUP hours from PR (title, description and list of commits are searchable)
-        HOURS=$(grep -iPo $KUP_PATTERN <<< $pr | xargs)
-        # echo -e "${ECHO_RED}DEBUG${ECHO_NC}: HOURS=$HOURS"
+        if [[ "$DEBUG" == 1 ]]; then
+            echo
+            echo -e "${ECHO_GREY}DEBUG: URL = $PR_URL${ECHO_NC}"
+            echo -e "${ECHO_GREY}DEBUG: PR = $pr${ECHO_NC}"
+        fi
+
+        PR_TITLE=$(jq -r '.title' <<< $pr)
+        HOURS=$(grep -iPo -m 1 $KUP_PATTERN <<< $PR_TITLE | head -n1 | xargs)
+
+        if [[ "$DEBUG" == 1 ]]; then
+            echo
+            echo -e "${ECHO_GREY}DEBUG: PR title HOURS = [$HOURS]${ECHO_NC}"
+        fi
 
         if [ ! -z "$HOURS" ]; then
-            echo -e "${ECHO_YELLOW}Hours found in PR Title or Description${ECHO_NC}"
+            echo -e "${ECHO_YELLOW}Hours found in PR Title${ECHO_NC}"
+        fi
+
+        if [ -z "$HOURS" ]; then
+            PR_DESCRIPTION=$(jq -r '.description' <<< $pr)
+            HOURS=$(grep -iPo $KUP_PATTERN <<< $PR_DESCRIPTION | head -n1 | xargs)
+
+            if [[ "$DEBUG" == 1 ]]; then
+                echo
+                echo -e "${ECHO_GREY}DEBUG: PR description HOURS = [$HOURS]${ECHO_NC}"
+            fi
+
+            if [ ! -z "$HOURS" ]; then
+                echo -e "${ECHO_YELLOW}Hours found in PR Description${ECHO_NC}"
+            fi
         fi
 
         if [ -z "$HOURS" ]; then
             PR_TAGS=$(curl -s "$PR_URL/labels" -H "Authorization: Basic $AUTH" | jq -c '.value[].name')
-            HOURS=$(grep -iPo $KUP_PATTERN <<< $PR_TAGS | xargs)
+            HOURS=$(grep -iPo $KUP_PATTERN <<< $PR_TAGS | head -n1 | xargs)
+
+            if [[ "$DEBUG" == 1 ]]; then
+                echo
+                echo -e "${ECHO_GREY}DEBUG: PR_TAGS = $PR_TAGS${ECHO_NC}"
+                echo -e "${ECHO_GREY}DEBUG: PR tags HOURS = $HOURS${ECHO_NC}"
+            fi
 
             if [ ! -z "$HOURS" ]; then
                 echo -e "${ECHO_YELLOW}Hours found in PR Tags${ECHO_NC}"
             fi
         fi
 
-        PR_COMMITS=$(curl -s "$PR_URL/commits" -H "Authorization: Basic $AUTH" | jq -c '.value[] | {id: .commitId, comment: .comment}')
+        PR_COMMITS_RESPONSE=$(curl -s "$PR_URL/commits" -H "Authorization: Basic $AUTH")
+        PR_COMMITS=$(jq -c '.value[] | { id: .commitId, comment: .comment }' <<< $PR_COMMITS_RESPONSE)
         PR_COMMITS_HOURS="0"
+
+        if [[ $DEBUG == 1 ]]; then
+            echo
+            echo -e "${ECHO_GREY}DEBUG: List of commits in PR:${ECHO_NC}"
+            echo -e "${ECHO_GREY}$PR_COMMITS${ECHO_NC}"
+            echo
+        fi 
 
         if [ -z "$PR_COMMITS" ]; then
             echo -e "${ECHO_RED}No commits discovered${ECHO_NC}"
         else
-            while read commit; do
+            IFS=$'\n'
+
+            for commit in $PR_COMMITS; do
+                if [[ "$DEBUG" == 1 ]]; then
+                    echo -e "${ECHO_GREY}DEBUG: Commit = $commit${ECHO_NC}"
+                fi
+
                 COMMIT_ID=$(jq -r '.id' <<< $commit)
                 COMMIT_COMMENT=$(jq -r '.comment' <<< $commit)
+
+                if [[ "$DEBUG" == 1 ]]; then
+                    echo
+                    echo -e "${ECHO_GREY}DEBUG: COMMIT_ID = $COMMIT_ID${ECHO_NC}"
+                    echo -e "${ECHO_GREY}DEBUG: COMMIT_COMMENT = $COMMIT_COMMENT${ECHO_NC}"
+                    echo
+                fi
 
                 if [ ! -z "${KNOWN_COMMITS[${COMMIT_ID}]}" ]; then
                     echo -e "${ECHO_YELLOW}[IGNORE]\t$COMMIT_ID: $COMMIT_COMMENT as KNOWN${ECHO_NC}"
@@ -133,7 +182,7 @@ while read project; do
                 # echo "Commit added to KNOWN $COMMIT_ID: $COMMIT_COMMENT"
 
                 if [ -z "$HOURS" ]; then
-                    HOURS=$(grep -iPo $KUP_PATTERN <<< $COMMIT_COMMENT | xargs)
+                    HOURS=$(grep -iPo $KUP_PATTERN <<< $COMMIT_COMMENT | head -n1 | xargs)
 
                     if [ ! -z "$HOURS" ]; then
                         PR_COMMITS_HOURS=$(echo "$PR_COMMITS_HOURS + $HOURS" | bc)
@@ -141,7 +190,9 @@ while read project; do
 
                     HOURS=""
                 fi
-            done <<< $PR_COMMITS
+            done
+
+            unset IFS;
         fi
 
         if [ -z "$HOURS" ]; then
