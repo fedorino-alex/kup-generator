@@ -221,22 +221,36 @@ while read project; do
         # get info about workitem
         PR_ID=$(jq -r '.id' <<< $pr)
         WORKITEM_API_URL=$(az repos pr work-item list --id $PR_ID --query '[0].url' -o tsv)
-        WORKITEM=$(curl -s "$WORKITEM_API_URL?fields=System.Title,System.WorkItemType,System.Id,Custom.Owner" -H "Authorization: Basic $AUTH")
 
-        WORKITEM_HREF_TEXT=$(jq -r '"\(.fields["System.WorkItemType"]) \(.fields["System.Id"])"' <<< $WORKITEM)
-        WORKITEM_HREF_URL=$(jq -r '._links.html.href' <<< $WORKITEM)
-        WORKITEM_TITLE=$(jq -r '.fields["System.Title"]' <<< $WORKITEM)
-        WORKITEM_CELL="{\small \href{$WORKITEM_HREF_URL}{$WORKITEM_HREF_TEXT}: $WORKITEM_TITLE}"
-        # echo "WORKITEM_CELL: $WORKITEM_CELL"
+        if [[ $DEBUG == 1 ]]; then
+            echo -e "${ECHO_GREY}DEBUG: WORKITEM_API_URL = $WORKITEM_API_URL"
+        fi
+
+        if [ ! -z $WORKITEM_API_URL ]; then
+            # get work title from workitem
+            WORKITEM=$(curl -s "$WORKITEM_API_URL?fields=System.Title,System.WorkItemType,System.Id,Custom.Owner" -H "Authorization: Basic $AUTH")
+            WORKITEM_HREF_TEXT=$(jq -r '"\(.fields["System.WorkItemType"]) \(.fields["System.Id"])"' <<< $WORKITEM)
+            WORKITEM_HREF_URL=$(jq -r '._links.html.href' <<< $WORKITEM)
+            WORKITEM_TITLE=$(jq -r '.fields["System.Title"]' <<< $WORKITEM)
+            WORKITEM_CELL="{\small \href{$WORKITEM_HREF_URL}{$WORKITEM_HREF_TEXT}: $WORKITEM_TITLE}"
+        else
+            WORKITEM_CELL="{\small $PR_TITLE}"
+        fi
 
         # get userstory owner
-        OWNER_EMAIL=$(jq -r '.fields["Custom.Owner"].uniqueName' <<< $WORKITEM)
-        OWNER_NAME=$(jq -r '.fields["Custom.Owner"].displayName' <<< $WORKITEM)
+        OWNER_EMAIL=$(jq -r '.fields["Custom.Owner"].uniqueName // empty' <<< $WORKITEM)
+        OWNER_NAME=$(jq -r '.fields["Custom.Owner"].displayName // empty' <<< $WORKITEM)
+
+        if [[ $DEBUG == 1 ]]; then 
+            echo -e "${ECHO_GREY}DEBUG: OWNER_EMAIL = $OWNER_EMAIL${ECHO_NC}"
+            echo -e "${ECHO_GREY}DEBUG: OWNER_NAME = $OWNER_NAME${ECHO_NC}"
+        fi
+
         if [ ! -z "$OWNER_EMAIL" ]; then
             OWNER_CELL="{\small \href{mailto:$OWNER_EMAIL}{$OWNER_NAME}}"
         else
             # TODO: check this with bugs and put QA here
-            OWNER_CELL="{\small \href{mailto:$AUTHOR_EMAIL}{$AUTHOR}}"
+            OWNER_CELL="{\small \href{mailto:$AUTHOR_EMAIL}{$AUTHOR_DISPLAY}}"
         fi
 
         # PR created date
