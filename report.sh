@@ -11,6 +11,11 @@ ECHO_NC='\033[0m' # No Color
 # START_DATE='2024-03-01T00:00:00.000000+00:00'
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
+# if [ ! -z "$DEBUG" ]; then
+#     DEBUG=1
+#     echo -e "${ECHO_GREY}DEBUG: You set DEBUG evironment variable, we run in debug mode${ECHO_NC}"
+# fi
+
 # environment variables
 if [ -z "$AUTHOR_EMAIL" ]; then
     echo -e "${ECHO_RED}Environment variable AUTHOR_EMAIL is not set${ECHO_NC}"
@@ -29,6 +34,12 @@ fi
 
 #variables
 AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
+
+# if [ $DEGUG -eq 1 ]; then
+#     echo -e "${ECHO_GREY}DEBUG: AZURE_DEVOPS_EXT_PAT = $AZURE_DEVOPS_EXT_PAT${ECHO_NC}"
+#     echo -e "${ECHO_GREY}DEBUG: AUTH = $AUTH${ECHO_NC}"
+# fi
+
 TOTAL_HOURS="0"
 NUMBER="1"
 KUP_PATTERN='(?<=\[KUP:)\s*\d+([\.,]\d+)?(?=\])'
@@ -51,7 +62,8 @@ fi
 rm -f "_lines.txt"
 
 # get author id and display name
-AUTHOR=$(az devops user list --query 'members[?user.mailAddress == `'$AUTHOR_EMAIL'`]' | jq '.[0]' -)
+
+AUTHOR=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$AUTHOR_EMAIL'" | ascii_downcase))' -)
 AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
 AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
 
