@@ -16,6 +16,7 @@ Collects all pull requests for current month and prepare PDF report according to
 ## Run docker-compose
 
 ``` bash
+docker-compose pull
 docker-compose run --rm -- kup
 ```
 
