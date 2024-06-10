@@ -26,6 +26,7 @@ RUN apt-get install -y bc
 WORKDIR /kup
 
 COPY ./kup_report_template.tex .
+COPY ./accuris-logo.png .
 COPY ./report.sh .
 
 ENTRYPOINT [ "./report.sh" ]
