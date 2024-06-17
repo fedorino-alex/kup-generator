@@ -214,7 +214,7 @@ while read project; do
         # get info about PR and try read KUP from title or description
         PR_HREF_TEXT=$(jq -r '"PR \(.id)" ' <<< $pr)
         PR_HREF_URL=$(jq -r '.url | sub("_apis/git/repositories"; "_git") | sub("/pullRequests/"; "/pullRequest/")' <<< $pr)
-        PR_TITLE=$(jq -r '.title' <<< $pr)
+        PR_TITLE=$(jq -r '.title' <<< $pr | sed -e 's|[#$%&_{}~]|\\&|g')
         PR_CELL="{\small \href{$PR_HREF_URL}{$PR_HREF_TEXT}: $PR_TITLE}"
         # echo "PR_CELL: $PR_CELL"
 
@@ -231,7 +231,7 @@ while read project; do
             WORKITEM=$(curl -s "$WORKITEM_API_URL?fields=System.Title,System.WorkItemType,System.Id,Custom.Owner" -H "Authorization: Basic $AUTH")
             WORKITEM_HREF_TEXT=$(jq -r '"\(.fields["System.WorkItemType"]) \(.fields["System.Id"])"' <<< $WORKITEM)
             WORKITEM_HREF_URL=$(jq -r '._links.html.href' <<< $WORKITEM)
-            WORKITEM_TITLE=$(jq -r '.fields["System.Title"]' <<< $WORKITEM)
+            WORKITEM_TITLE=$(jq -r '.fields["System.Title"]' <<< $WORKITEM | sed -e 's|[#$%&_{}~]|\\&|g')
             WORKITEM_CELL="{\small \href{$WORKITEM_HREF_URL}{$WORKITEM_HREF_TEXT}: $WORKITEM_TITLE}"
         else
             WORKITEM_CELL="{\small $PR_TITLE}"
@@ -293,8 +293,14 @@ sed -i \
     d}" \
     ./out/$MONTH_TEMPLATE_FILE
 
-# Run pdf creation
-pdflatex -interaction=batchmode -output-directory=./out ./out/$MONTH_TEMPLATE_FILE > /dev/null 2>&1
+if [[ "$DEBUG" == 1 ]]; then
+    # Run pdf creation
+    pdflatex -interaction=batchmode -output-directory=./out ./out/$MONTH_TEMPLATE_FILE
+else
+    # Run pdf creation
+    pdflatex -interaction=batchmode -output-directory=./out ./out/$MONTH_TEMPLATE_FILE > /dev/null 2>&1
 
-# remove everything except PDF
-find ./out/ -maxdepth 1 -type f ! -name '*.pdf' -exec rm -f {} +
+    # remove everything except PDF
+    find ./out/ -maxdepth 1 -type f ! -name '*.pdf' -exec rm -f {} +
+fi
+
