@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 # constants
 ECHO_RED='\033[0;31m'
@@ -8,7 +9,6 @@ ECHO_CYAN='\033[0;36m'
 ECHO_GREY='\033[0;90m' 
 ECHO_NC='\033[0m' # No Color
 
-# START_DATE='2024-03-01T00:00:00.000000+00:00'
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
 if [[  "$DEBUG" == 1 ]]; then
@@ -40,7 +40,7 @@ if [[ "$DEBUG" == 1 ]]; then
 fi
 
 TOTAL_HOURS="0"
-NUMBER="1"
+LINE_NUMBER="1"
 KUP_PATTERN='(?<=\[KUP:)\s*\d+([\.,]\d+)?(?=\])'
 declare -A KNOWN_COMMITS
 
@@ -65,6 +65,11 @@ rm -f "_lines.txt"
 AUTHOR=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$AUTHOR_EMAIL'" | ascii_downcase))' -)
 AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
 AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
+
+if [ -z "$AUTHOR" ]; then
+    echo -e "${ECHO_RED}Cannot find author by email $AUTHOR_EMAIL, your PAT is not valid or user is not exist${ECHO_NC}"
+    exit 1
+fi
 
 echo
 echo "AUTHOR: $AUTHOR_DISPLAY"
@@ -262,13 +267,13 @@ while read project; do
         # echo "PR_DATE_CELL: $PR_DATE_CELL"
 
         # collecting all table lines in separate file to easy replace in pdf template
-        echo "$NUMBER & $WORKITEM_CELL & $PR_CELL & $HOURS_CELL & $PR_DATE_CELL & $OWNER_CELL \\\\" >> _lines.txt
+        echo "$LINE_NUMBER & $WORKITEM_CELL & $PR_CELL & $HOURS_CELL & $PR_DATE_CELL & $OWNER_CELL \\\\" >> _lines.txt
         echo "\hline" >> _lines.txt
 
         # Increase TOTAL_HOURS
         TOTAL_HOURS=$(echo "$TOTAL_HOURS + $HOURS" | bc)
-        # Increase line number
-        NUMBER=$((NUMBER + 1))
+        # Increase line LINE_NUMBER
+        LINE_NUMBER=$((LINE_NUMBER + 1))
     done <<< $PULL_REQUESTS
 done <<< $PROJECTS
 
