@@ -233,13 +233,15 @@ while read project; do
             WORKITEM_HREF_URL=$(jq -r '._links.html.href' <<< $WORKITEM)
             WORKITEM_TITLE=$(jq -r '.fields["System.Title"]' <<< $WORKITEM | sed -e 's|[#$%&_{}~]|\\&|g')
             WORKITEM_CELL="{\small \href{$WORKITEM_HREF_URL}{$WORKITEM_HREF_TEXT}: $WORKITEM_TITLE}"
+
+            # get userstory owner
+            OWNER_EMAIL=$(jq -r '.fields["Custom.Owner"].uniqueName // empty' <<< $WORKITEM)
+            OWNER_NAME=$(jq -r '.fields["Custom.Owner"].displayName // empty' <<< $WORKITEM)
         else
             WORKITEM_CELL="{\small $PR_TITLE}"
+            OWNER_EMAIL=''
+            OWNER_NAME=''
         fi
-
-        # get userstory owner
-        OWNER_EMAIL=$(jq -r '.fields["Custom.Owner"].uniqueName // empty' <<< $WORKITEM)
-        OWNER_NAME=$(jq -r '.fields["Custom.Owner"].displayName // empty' <<< $WORKITEM)
 
         if [[ $DEBUG == 1 ]]; then 
             echo -e "${ECHO_GREY}DEBUG: OWNER_EMAIL = $OWNER_EMAIL${ECHO_NC}"

@@ -1,7 +1,9 @@
-*.yaml
-*.aux
-*.log
-*.out
-*.pdf
+/*.yaml
+/*.yml
 
-out/
+/*.aux
+/*.log
+/*.out
+/*.pdf
+
+/out/
