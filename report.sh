@@ -47,10 +47,13 @@ declare -A KNOWN_COMMITS
 # reading input parameters
 PARAM_LINES=""
 PARAM_MONTH=$(date -d $START_DATE +%B)
+PARAM_DAYS=$(sed -n "$(date +%m)p" calendar.txt | cut -f2 -d '|')
 
 if [ -z "$PARAM_DAYS" ]; then
     echo -n 'Working days in the Period: '
     read PARAM_DAYS
+else
+    echo -e "Working days in the Period: $PARAM_DAYS"
 fi
 
 if [ -z "$PARAM_ABS" ]; then
