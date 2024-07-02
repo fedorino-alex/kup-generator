@@ -7,7 +7,7 @@ services:
     volumes:
       - ./out:/kup/out
     environment:
-      - AZURE_DEVOPS_EXT_PAT=osulnlmyp4g3xkf7oecjhbinacdb7fqmz34xfehiysrgkv5mbtba
+      - AZURE_DEVOPS_EXT_PAT=
       - AUTHOR_EMAIL=aliaksandr.fedaryna@accuristech.com
       - AUTHOR_TITLE=LEAD II, SOFTWARE DEVELOPMENT/ENGINEERING
       - MANAGER=Yauheni Bulychau
