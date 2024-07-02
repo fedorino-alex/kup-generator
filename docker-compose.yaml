@@ -8,9 +8,9 @@ services:
       - ./out:/kup/out
     environment:
       - AZURE_DEVOPS_EXT_PAT=
-      - AUTHOR_EMAIL=aliaksandr.fedaryna@accuristech.com
-      - AUTHOR_TITLE=LEAD II, SOFTWARE DEVELOPMENT/ENGINEERING
-      - MANAGER=Yauheni Bulychau
-      - MANAGER_TITLE=LEAD III, SOFTWARE DEVELOPMENT/ENGINEERING
+      - AUTHOR_EMAIL=your.email@at.domain.com
+      - AUTHOR_TITLE=YOUR TITLE, SOFTWARE DEVELOPMENT/ENGINEERING
+      - MANAGER=Your Manager
+      - MANAGER_TITLE=MANAGERS TITLE
     stdin_open: true
     tty: true
