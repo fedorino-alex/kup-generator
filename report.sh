@@ -96,7 +96,7 @@ while read project; do
         continue
     fi
 
-    while read pr; do 
+    while read -r pr; do 
         PR_URL=$(jq -r '.url' <<< $pr)
         echo # empty line
         echo -e "${ECHO_CYAN}$(jq -r '"\(.id) \(.title)"' <<< $pr)${ECHO_NC}"
