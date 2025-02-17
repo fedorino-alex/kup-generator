@@ -11,9 +11,29 @@ ECHO_NC='\033[0m' # No Color
 
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
-if [[  "$DEBUG" == 1 ]]; then
-    echo -e "${ECHO_GREY}DEBUG: You set DEBUG evironment variable, we run in debug mode${ECHO_NC}"
-fi
+# parse options
+DEBUG=0
+SILENT=0
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --mode)
+            shift
+            case $1 in
+                debug) DEBUG=1; SILENT=0; echo -e "${ECHO_GREY}DEBUG: We run in debug mode${ECHO_NC}" ;;
+                silent) DEBUG=0; SILENT=1 ;;
+                *) echo -e "${ECHO_RED}Invalid mode: $1, values are 'debug' or 'silent'${ECHO_NC}"; exit 1 ;;
+            esac
+            ;;
+    esac
+    shift
+done
+
+function print_text() {
+    if [[ "$SILENT" == 0 ]]; then
+        echo -e "$1"
+    fi
+}
 
 # environment variables
 if [ -z "$AUTHOR_EMAIL" ]; then
@@ -49,21 +69,23 @@ PARAM_LINES=""
 PARAM_MONTH=$(date -d $START_DATE +%B)
 PARAM_DAYS=$(sed -n "$(date +%m)p" calendar.txt | cut -f2 -d '|')
 
-if [ -z "$PARAM_DAYS" ]; then
-    echo -n 'Working days in the Period: '
-    read PARAM_DAYS
-else
-    echo -e "Working days in the Period: $PARAM_DAYS"
-fi
+if [[ "$SILENT" == 0 ]]; then 
+    if [ -z "$PARAM_DAYS" ]; then
+        echo -n 'Working days in the Period: '
+        read PARAM_DAYS
+    else
+        print_text "Working days in the Period: $PARAM_DAYS"
+    fi
 
-if [ -z "$PARAM_ABS" ]; then
-    echo -n 'Authors days of absence: '
-    read PARAM_ABS
-fi
+    if [ -z "$PARAM_ABS" ]; then
+        echo -n 'Authors days of absence: '
+        read PARAM_ABS
+    fi
+fi 
 
 rm -f "_lines.txt"
 
-# get author id and display name
+# get author id and print_text name
 
 AUTHOR=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$AUTHOR_EMAIL'" | ascii_downcase))' -)
 AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
@@ -74,49 +96,49 @@ if [ -z "$AUTHOR" ]; then
     exit 1
 fi
 
-echo
-echo "AUTHOR: $AUTHOR_DISPLAY"
-echo "AUTHOR_TITLE: $AUTHOR_TITLE"
-echo "MANAGER: $MANAGER"
-echo "MANAGER_TITLE: $MANAGER_TITLE"
-echo
+print_text
+print_text "AUTHOR: $AUTHOR_DISPLAY"
+print_text "AUTHOR_TITLE: $AUTHOR_TITLE"
+print_text "MANAGER: $MANAGER"
+print_text "MANAGER_TITLE: $MANAGER_TITLE"
+print_text
 
-echo "Searching PRs from $START_DATE..."
+print_text "Searching PRs from $START_DATE..."
 
 PROJECTS=$(az devops project list | jq -r '.value[].name')
 while read project; do
-    echo # empty line
-    echo "Searching project $project..."
+    print_text # empty line
+    print_text "Searching project $project..."
 
     PULL_REQUESTS=$(az repos pr list -p "$project" --status completed --creator $AUTHOR_ID \
     --query '[?closedDate > `'$START_DATE'`].{title: title, description: description, id: pullRequestId, url: url, closedDate: closedDate}' | jq -rc 'sort_by(.closedDate) | .[]' -)
 
     if [ -z "$PULL_REQUESTS" ]; then
-        echo -e "${ECHO_RED}No Pull requests found in this project, moving next...${ECHO_NC}"
+        print_text "${ECHO_RED}No Pull requests found in this project, moving next...${ECHO_NC}"
         continue
     fi
 
     while read -r pr; do 
         PR_URL=$(jq -r '.url' <<< $pr)
-        echo # empty line
-        echo -e "${ECHO_CYAN}$(jq -r '"\(.id) \(.title)"' <<< $pr)${ECHO_NC}"
+        print_text # empty line
+        print_text "${ECHO_CYAN}$(jq -r '"\(.id) \(.title)"' <<< $pr)${ECHO_NC}"
 
         if [[ "$DEBUG" == 1 ]]; then
-            echo
-            echo -e "${ECHO_GREY}DEBUG: URL = $PR_URL${ECHO_NC}"
-            echo -e "${ECHO_GREY}DEBUG: PR = $pr${ECHO_NC}"
+            print_text
+            print_text "${ECHO_GREY}DEBUG: URL = $PR_URL${ECHO_NC}"
+            print_text "${ECHO_GREY}DEBUG: PR = $pr${ECHO_NC}"
         fi
 
         PR_TITLE=$(jq -r '.title' <<< $pr)
         HOURS=$(grep -iPo -m 1 $KUP_PATTERN <<< $PR_TITLE | head -n1 | xargs)
 
         if [[ "$DEBUG" == 1 ]]; then
-            echo
-            echo -e "${ECHO_GREY}DEBUG: PR title HOURS = [$HOURS]${ECHO_NC}"
+            print_text
+            print_text "${ECHO_GREY}DEBUG: PR title HOURS = [$HOURS]${ECHO_NC}"
         fi
 
         if [ ! -z "$HOURS" ]; then
-            echo -e "${ECHO_YELLOW}Hours found in PR Title${ECHO_NC}"
+            print_text "${ECHO_YELLOW}Hours found in PR Title${ECHO_NC}"
         fi
 
         if [ -z "$HOURS" ]; then
@@ -124,12 +146,12 @@ while read project; do
             HOURS=$(grep -iPo $KUP_PATTERN <<< $PR_DESCRIPTION | head -n1 | xargs)
 
             if [[ "$DEBUG" == 1 ]]; then
-                echo
-                echo -e "${ECHO_GREY}DEBUG: PR description HOURS = [$HOURS]${ECHO_NC}"
+                print_text
+                print_text "${ECHO_GREY}DEBUG: PR description HOURS = [$HOURS]${ECHO_NC}"
             fi
 
             if [ ! -z "$HOURS" ]; then
-                echo -e "${ECHO_YELLOW}Hours found in PR Description${ECHO_NC}"
+                print_text "${ECHO_YELLOW}Hours found in PR Description${ECHO_NC}"
             fi
         fi
 
@@ -138,13 +160,13 @@ while read project; do
             HOURS=$(grep -iPo $KUP_PATTERN <<< $PR_TAGS | head -n1 | xargs)
 
             if [[ "$DEBUG" == 1 ]]; then
-                echo
-                echo -e "${ECHO_GREY}DEBUG: PR_TAGS = $PR_TAGS${ECHO_NC}"
-                echo -e "${ECHO_GREY}DEBUG: PR tags HOURS = $HOURS${ECHO_NC}"
+                print_text
+                print_text "${ECHO_GREY}DEBUG: PR_TAGS = $PR_TAGS${ECHO_NC}"
+                print_text "${ECHO_GREY}DEBUG: PR tags HOURS = $HOURS${ECHO_NC}"
             fi
 
             if [ ! -z "$HOURS" ]; then
-                echo -e "${ECHO_YELLOW}Hours found in PR Tags${ECHO_NC}"
+                print_text "${ECHO_YELLOW}Hours found in PR Tags${ECHO_NC}"
             fi
         fi
 
@@ -153,38 +175,43 @@ while read project; do
         PR_COMMITS_HOURS="0"
 
         if [[ $DEBUG == 1 ]]; then
-            echo
-            echo -e "${ECHO_GREY}DEBUG: List of commits in PR:${ECHO_NC}"
-            echo -e "${ECHO_GREY}$PR_COMMITS${ECHO_NC}"
-            echo
+            print_text
+            print_text "${ECHO_GREY}DEBUG: List of commits in PR:${ECHO_NC}"
+            print_text "${ECHO_GREY}$PR_COMMITS${ECHO_NC}"
+            print_text
         fi 
 
         if [ -z "$PR_COMMITS" ]; then
-            echo -e "${ECHO_RED}No commits discovered${ECHO_NC}"
+            print_text "${ECHO_RED}No commits discovered${ECHO_NC}"
         else
             IFS=$'\n'
 
             for commit in $PR_COMMITS; do
                 if [[ "$DEBUG" == 1 ]]; then
-                    echo -e "${ECHO_GREY}DEBUG: Commit = $commit${ECHO_NC}"
+                    print_text "${ECHO_GREY}DEBUG: Commit = $commit${ECHO_NC}"
                 fi
 
                 COMMIT_ID=$(jq -r '.id' <<< $commit)
                 COMMIT_COMMENT=$(jq -r '.comment' <<< $commit)
 
                 if [[ "$DEBUG" == 1 ]]; then
-                    echo
-                    echo -e "${ECHO_GREY}DEBUG: COMMIT_ID = $COMMIT_ID${ECHO_NC}"
-                    echo -e "${ECHO_GREY}DEBUG: COMMIT_COMMENT = $COMMIT_COMMENT${ECHO_NC}"
-                    echo
+                    print_text
+                    print_text "${ECHO_GREY}DEBUG: COMMIT_ID = $COMMIT_ID${ECHO_NC}"
+                    print_text "${ECHO_GREY}DEBUG: COMMIT_COMMENT = $COMMIT_COMMENT${ECHO_NC}"
+                    print_text
                 fi
 
                 if [ ! -z "${KNOWN_COMMITS[${COMMIT_ID}]}" ]; then
-                    echo -e "${ECHO_YELLOW}[IGNORE]\t$COMMIT_ID: $COMMIT_COMMENT as KNOWN${ECHO_NC}"
+                    if [[ "$DEBUG" == 1 ]]; then
+                        print_text "${ECHO_YELLOW}[IGNORE]\t$COMMIT_ID: $COMMIT_COMMENT as KNOWN${ECHO_NC}"
+                    fi
+
                     continue
                 fi
 
-                echo -e "${ECHO_GREY}[INCLUDE]\t$COMMIT_ID: $COMMIT_COMMENT${ECHO_NC}"
+                if [[ "$DEBUG" == 1 ]]; then
+                    print_text "${ECHO_GREY}[INCLUDE]\t$COMMIT_ID: $COMMIT_COMMENT${ECHO_NC}"
+                fi
 
                 KNOWN_COMMITS[$COMMIT_ID]=$COMMIT_COMMENT # add commit to knowns to avoid multiple participations
                 # echo "Commit added to KNOWN $COMMIT_ID: $COMMIT_COMMENT"
@@ -205,18 +232,18 @@ while read project; do
 
         if [ -z "$HOURS" ]; then
             if [ "$PR_COMMITS_HOURS" == "0" ]; then
-                echo -e "${ECHO_RED}KUP has not been found, skip this PR${ECHO_NC}"
+                print_text "${ECHO_RED}KUP has not been found, skip this PR${ECHO_NC}"
                 continue
             fi
 
             HOURS=$PR_COMMITS_HOURS
 
             if [ ! -z "$HOURS" ]; then
-                echo -e "${ECHO_YELLOW}Hours found in PR Commits${ECHO_NC}"
+                print_text "${ECHO_YELLOW}Hours found in PR Commits${ECHO_NC}"
             fi
         fi
 
-        echo -e "${ECHO_GREEN}HOURS: $HOURS${ECHO_NC}"
+        print_text "${ECHO_GREEN}HOURS: $HOURS${ECHO_NC}"
         HOURS_CELL="{\small $HOURS}"
 
         # get info about PR and try read KUP from title or description
@@ -231,7 +258,7 @@ while read project; do
         WORKITEM_API_URL=$(az repos pr work-item list --id $PR_ID --query '[0].url' -o tsv)
 
         if [[ $DEBUG == 1 ]]; then
-            echo -e "${ECHO_GREY}DEBUG: WORKITEM_API_URL = $WORKITEM_API_URL"
+            print_text "${ECHO_GREY}DEBUG: WORKITEM_API_URL = $WORKITEM_API_URL"
         fi
 
         if [ ! -z $WORKITEM_API_URL ]; then
@@ -252,8 +279,8 @@ while read project; do
         fi
 
         if [[ $DEBUG == 1 ]]; then 
-            echo -e "${ECHO_GREY}DEBUG: OWNER_EMAIL = $OWNER_EMAIL${ECHO_NC}"
-            echo -e "${ECHO_GREY}DEBUG: OWNER_NAME = $OWNER_NAME${ECHO_NC}"
+            print_text "${ECHO_GREY}DEBUG: OWNER_EMAIL = $OWNER_EMAIL${ECHO_NC}"
+            print_text "${ECHO_GREY}DEBUG: OWNER_NAME = $OWNER_NAME${ECHO_NC}"
         fi
 
         if [ ! -z "$OWNER_EMAIL" ]; then
@@ -269,9 +296,11 @@ while read project; do
         PR_DATE_CELL="{\small $PR_DATE}"
         # echo "PR_DATE_CELL: $PR_DATE_CELL"
 
-        # collecting all table lines in separate file to easy replace in pdf template
-        echo "$LINE_NUMBER & $WORKITEM_CELL & $PR_CELL & $HOURS_CELL & $PR_DATE_CELL & $OWNER_CELL \\\\" >> _lines.txt
-        echo "\hline" >> _lines.txt
+        if [[ $SILENT -ne 1 ]]; then
+            # collecting all table lines in separate file to easy replace in pdf template
+            echo "$LINE_NUMBER & $WORKITEM_CELL & $PR_CELL & $HOURS_CELL & $PR_DATE_CELL & $OWNER_CELL \\\\" >> _lines.txt
+            echo "\hline" >> _lines.txt
+        fi
 
         # Increase TOTAL_HOURS
         TOTAL_HOURS=$(echo "$TOTAL_HOURS + $HOURS" | bc)
@@ -280,15 +309,27 @@ while read project; do
     done <<< $PULL_REQUESTS
 done <<< $PROJECTS
 
+PERCENTAGE=$(echo "scale=2; $TOTAL_HOURS / ($PARAM_DAYS * 8) * 100" | bc)
+
 echo
 echo "PRs have been collected!"
-echo -e "${ECHO_GREEN}Total hours for this month: $TOTAL_HOURS${ECHO_NC}"
+if (( $(echo "$PERCENTAGE < 25" | bc -l) )); then
+    echo -e "${ECHO_RED}Total hours for this month: $TOTAL_HOURS of $(echo "$PARAM_DAYS * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
+elif (( $(echo "$PERCENTAGE < 50" | bc -l) )); then
+    echo -e "${ECHO_YELLOW}Total hours for this month: $TOTAL_HOURS of $(echo "$PARAM_DAYS * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
+else
+    echo -e "${ECHO_GREEN}Total hours for this month: $TOTAL_HOURS of $(echo "$PARAM_DAYS * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
+fi
 echo
 
-MONTH_TEMPLATE_FILE="$(date +%Y-%m).tex"
-cp -f "kup_report_template.tex" "$(pwd)/out/$MONTH_TEMPLATE_FILE"
+# stop program if we are in silent mode
+if [[ $SILENT -eq 1 ]]; then
+    exit 0
+fi
 
-echo "Report template copied to $(pwd)/out/$MONTH_TEMPLATE_FILE"
+MONTH_TEMPLATE_FILE="$AUTHOR_DISPLAY, $(date +%Y-%m).tex"
+cp -f "kup_report_template.tex" "$(pwd)/out/$MONTH_TEMPLATE_FILE"
+print_text "Report template copied to $(pwd)/out/$MONTH_TEMPLATE_FILE"
 
 # replace ==PLACEHOLDERS== with their values
 sed -i \
@@ -301,16 +342,15 @@ sed -i \
     -e "s|==ABS==|$PARAM_ABS|" \
     -e "/==LINES==/{r _lines.txt
     d}" \
-    ./out/$MONTH_TEMPLATE_FILE
+    "./out/$MONTH_TEMPLATE_FILE"
 
 if [[ "$DEBUG" == 1 ]]; then
     # Run pdf creation
-    pdflatex -interaction=batchmode -output-directory=./out ./out/$MONTH_TEMPLATE_FILE
+    pdflatex -interaction=batchmode -output-directory=./out "./out/$MONTH_TEMPLATE_FILE"
 else
     # Run pdf creation
-    pdflatex -interaction=batchmode -output-directory=./out ./out/$MONTH_TEMPLATE_FILE > /dev/null 2>&1
+    pdflatex -interaction=batchmode -output-directory=./out "./out/$MONTH_TEMPLATE_FILE" > /dev/null 2>&1
 
     # remove everything except PDF
     find ./out/ -maxdepth 1 -type f ! -name '*.pdf' -exec rm -f {} +
 fi
-
