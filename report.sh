@@ -309,7 +309,7 @@ while read project; do
     done <<< $PULL_REQUESTS
 done <<< $PROJECTS
 
-PERCENTAGE=$(echo "scale=2; $TOTAL_HOURS / ($PARAM_DAYS * 8) * 100" | bc)
+PERCENTAGE=$(echo "scale=2; ($TOTAL_HOURS * 100) / ($PARAM_DAYS * 8)" | bc)
 
 echo
 echo "PRs have been collected!"
