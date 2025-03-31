@@ -7,7 +7,7 @@ Collects all pull requests for current month and prepare PDF report according to
 1. `AZURE_DEVOPS_EXT_PAT` personal access token to Azure DevOps portal with all scopes (later will define only required)
 2. `AUTHOR_EMAIL` contains your email for searching PRs;
 3. `AUTHOR_TITLE` is your title;
-4. `MANAGER` is your manager full name;
+4. `MANAGER_EMAIL` is your manager email;
 5. `MANAGER_TITLE` is your manager's title;
 
 ## Mount requred volumes
