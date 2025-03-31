@@ -51,6 +51,11 @@ if [ ! -d ./out ]; then
     exit 1
 fi
 
+if [ ! -z "$MANAGER" ]; then
+    echo -e "${ECHO_RED}Obsolete MANAGER environment variable, provide MANAGER_EMAIL instead${ECHO_NC}"
+    exit 1
+fi
+
 #variables
 AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
 
@@ -87,6 +92,8 @@ rm -f "_lines.txt"
 
 # get author id and print_text name
 
+MANAGER=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$MANAGER_EMAIL'" | ascii_downcase))' -)
+MANAGER_DISPLAY=$(jq -r '.user.displayName' <<< $MANAGER)
 AUTHOR=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$AUTHOR_EMAIL'" | ascii_downcase))' -)
 AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
 AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
@@ -99,7 +106,7 @@ fi
 print_text
 print_text "AUTHOR: $AUTHOR_DISPLAY"
 print_text "AUTHOR_TITLE: $AUTHOR_TITLE"
-print_text "MANAGER: $MANAGER"
+print_text "MANAGER: $MANAGER_DISPLAY"
 print_text "MANAGER_TITLE: $MANAGER_TITLE"
 print_text
 
@@ -274,8 +281,8 @@ while read project; do
             OWNER_NAME=$(jq -r '.fields["Custom.Owner"].displayName // empty' <<< $WORKITEM)
         else
             WORKITEM_CELL="{\small $PR_TITLE}"
-            OWNER_EMAIL=''
-            OWNER_NAME=''
+            OWNER_EMAIL=$MANAGER_EMAIL
+            OWNER_NAME=$MANAGER_DISPLAY
         fi
 
         if [[ $DEBUG == 1 ]]; then 
@@ -335,7 +342,7 @@ print_text "Report template copied to $(pwd)/out/$MONTH_TEMPLATE_FILE"
 sed -i \
     -e "s|==AUTHOR==|$AUTHOR_DISPLAY|" \
     -e "s|==AUTHOR_TITLE==|$AUTHOR_TITLE|" \
-    -e "s|==MANAGER==|$MANAGER|" \
+    -e "s|==MANAGER==|$MANAGER_DISPLAY|" \
     -e "s|==MANAGER_TITLE==|$MANAGER_TITLE|" \
     -e "s|==MONTH==|$PARAM_MONTH|" \
     -e "s|==DAYS==|$PARAM_DAYS|" \

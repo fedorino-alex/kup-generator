@@ -10,7 +10,7 @@ services:
       - AZURE_DEVOPS_EXT_PAT=
       - AUTHOR_EMAIL=your.email@at.domain.com
       - AUTHOR_TITLE=YOUR TITLE, SOFTWARE DEVELOPMENT/ENGINEERING
-      - MANAGER=Your Manager
+      - MANAGER_EMAIL=manager.email@at.domain.com
       - MANAGER_TITLE=MANAGERS TITLE
     stdin_open: true
     tty: true
