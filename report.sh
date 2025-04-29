@@ -292,6 +292,10 @@ while read project; do
             OWNER_NAME=$(jq -r '.fields["Custom.Owner"].displayName // empty' <<< $WORKITEM)
         else
             WORKITEM_CELL="{\small $PR_TITLE}"
+        fi
+
+        # set manager as OWNER in case when we cannot find owner
+        if [ -z OWNER_EMAIL ]; then
             OWNER_EMAIL=$MANAGER_EMAIL
             OWNER_NAME=$MANAGER_DISPLAY
         fi
