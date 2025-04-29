@@ -295,7 +295,7 @@ while read project; do
         fi
 
         # set manager as OWNER in case when we cannot find owner
-        if [ -z OWNER_EMAIL ]; then
+        if [ -z $OWNER_EMAIL ]; then
             OWNER_EMAIL=$MANAGER_EMAIL
             OWNER_NAME=$MANAGER_DISPLAY
         fi
