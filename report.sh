@@ -56,6 +56,11 @@ if [ ! -d ./out ]; then
     exit 1
 fi
 
+if [ ! -z "$MANAGER" ]; then
+    echo -e "${ECHO_RED}Obsolete MANAGER environment variable, provide MANAGER_EMAIL instead${ECHO_NC}"
+    exit 1
+fi
+
 #variables
 AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
 
@@ -92,6 +97,8 @@ rm -f "_lines.txt"
 
 # get author id and print_text name
 
+MANAGER=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$MANAGER_EMAIL'" | ascii_downcase))' -)
+MANAGER_DISPLAY=$(jq -r '.user.displayName' <<< $MANAGER)
 AUTHOR=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$AUTHOR_EMAIL'" | ascii_downcase))' -)
 AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
 AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
@@ -287,8 +294,8 @@ while read project; do
             OWNER_NAME=$(jq -r '.fields["Custom.Owner"].displayName // empty' <<< $WORKITEM)
         else
             WORKITEM_CELL="{\small $PR_TITLE}"
-            OWNER_EMAIL=''
-            OWNER_NAME=''
+            OWNER_EMAIL=$MANAGER_EMAIL
+            OWNER_NAME=$MANAGER_DISPLAY
         fi
 
         if [[ $DEBUG == 1 ]]; then 
@@ -325,7 +332,7 @@ while read project; do
     done <<< $PULL_REQUESTS
 done <<< $PROJECTS
 
-PERCENTAGE=$(echo "scale=2; $TOTAL_HOURS / ($PARAM_DAYS * 8) * 100" | bc)
+PERCENTAGE=$(echo "scale=2; ($TOTAL_HOURS * 100) / ($PARAM_DAYS * 8)" | bc)
 
 echo
 echo "PRs have been collected!"
