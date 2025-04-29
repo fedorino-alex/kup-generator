@@ -41,6 +41,16 @@ if [ -z "$AUTHOR_EMAIL" ]; then
     exit 1
 fi
 
+if [ ! -z "$MANAGER" ]; then
+    echo -e "${ECHO_RED}Obsolete MANAGER environment variable, provide MANAGER_EMAIL instead${ECHO_NC}"
+    exit 1
+fi
+
+if [ -z "$MANAGER_EMAIL" ]; then
+    echo -e "${ECHO_RED}Environment variable MANAGER_EMAIL is not set${ECHO_NC}"
+    exit 1
+fi
+
 if [ -z "$AZURE_DEVOPS_EXT_PAT" ]; then
     echo -e "${ECHO_RED}Environment variable AZURE_DEVOPS_EXT_PAT is not set${ECHO_NC}"
     exit 1
@@ -48,11 +58,6 @@ fi
 
 if [ ! -d ./out ]; then
     echo -e "${ECHO_RED}Please mount output volume '{host_dir}:$(pwd)/out:rw'${ECHO_NC}"
-    exit 1
-fi
-
-if [ ! -z "$MANAGER" ]; then
-    echo -e "${ECHO_RED}Obsolete MANAGER environment variable, provide MANAGER_EMAIL instead${ECHO_NC}"
     exit 1
 fi
 
@@ -92,14 +97,20 @@ rm -f "_lines.txt"
 
 # get author id and print_text name
 
-MANAGER=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$MANAGER_EMAIL'" | ascii_downcase))' -)
-MANAGER_DISPLAY=$(jq -r '.user.displayName' <<< $MANAGER)
 AUTHOR=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$AUTHOR_EMAIL'" | ascii_downcase))' -)
 AUTHOR_ID=$(jq -r '.id' <<< $AUTHOR)
 AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< $AUTHOR)
 
 if [ -z "$AUTHOR" ]; then
     echo -e "${ECHO_RED}Cannot find author by email $AUTHOR_EMAIL, your PAT is not valid or user is not exist${ECHO_NC}"
+    exit 1
+fi
+
+MANAGER=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$MANAGER_EMAIL'" | ascii_downcase))' -)
+MANAGER_DISPLAY=$(jq -r '.user.displayName' <<< $MANAGER)
+
+if [ -z "$MANAGER" ]; then
+    echo -e "${ECHO_RED}Cannot find manager by email $MANAGER_EMAIL, your PAT is not valid or user is not exist${ECHO_NC}"
     exit 1
 fi
 
@@ -281,20 +292,20 @@ while read project; do
             OWNER_NAME=$(jq -r '.fields["Custom.Owner"].displayName // empty' <<< $WORKITEM)
         else
             WORKITEM_CELL="{\small $PR_TITLE}"
+        fi
+
+        # set manager as OWNER in case when we cannot find owner
+        if [ -z $OWNER_EMAIL ]; then
             OWNER_EMAIL=$MANAGER_EMAIL
             OWNER_NAME=$MANAGER_DISPLAY
         fi
 
+        OWNER_CELL="{\small \href{mailto:$OWNER_EMAIL}{$OWNER_NAME}}"
+
         if [[ $DEBUG == 1 ]]; then 
             print_text "${ECHO_GREY}DEBUG: OWNER_EMAIL = $OWNER_EMAIL${ECHO_NC}"
             print_text "${ECHO_GREY}DEBUG: OWNER_NAME = $OWNER_NAME${ECHO_NC}"
-        fi
-
-        if [ ! -z "$OWNER_EMAIL" ]; then
-            OWNER_CELL="{\small \href{mailto:$OWNER_EMAIL}{$OWNER_NAME}}"
-        else
-            # TODO: check this with bugs and put QA here
-            OWNER_CELL="{\small \href{mailto:$AUTHOR_EMAIL}{$AUTHOR_DISPLAY}}"
+            print_text "${ECHO_GREY}DEBUG: OWNER_CELL = $OWNER_CELL${ECHO_NC}"
         fi
 
         # PR created date
