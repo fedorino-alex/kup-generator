@@ -41,6 +41,11 @@ if [ -z "$AUTHOR_EMAIL" ]; then
     exit 1
 fi
 
+if [ -z "$MANAGER_EMAIL" ]; then
+    echo -e "${ECHO_RED}Environment variable MANAGER_EMAIL is not set${ECHO_NC}"
+    exit 1
+fi
+
 if [ -z "$AZURE_DEVOPS_EXT_PAT" ]; then
     echo -e "${ECHO_RED}Environment variable AZURE_DEVOPS_EXT_PAT is not set${ECHO_NC}"
     exit 1
@@ -96,10 +101,18 @@ if [ -z "$AUTHOR" ]; then
     exit 1
 fi
 
+MANAGER=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'$MANAGER_EMAIL'" | ascii_downcase))' -)
+MANAGER_DISPLAY=$(jq -r '.user.displayName' <<< $MANAGER)
+
+if [ -z "$MANAGER" ]; then
+    echo -e "${ECHO_RED}Cannot find manager by email $MANAGER_EMAIL, your PAT is not valid or user is not exist${ECHO_NC}"
+    exit 1
+fi
+
 print_text
 print_text "AUTHOR: $AUTHOR_DISPLAY"
 print_text "AUTHOR_TITLE: $AUTHOR_TITLE"
-print_text "MANAGER: $MANAGER"
+print_text "MANAGER: $MANAGER_DISPLAY"
 print_text "MANAGER_TITLE: $MANAGER_TITLE"
 print_text
 
@@ -286,8 +299,11 @@ while read project; do
         if [ ! -z "$OWNER_EMAIL" ]; then
             OWNER_CELL="{\small \href{mailto:$OWNER_EMAIL}{$OWNER_NAME}}"
         else
-            # TODO: check this with bugs and put QA here
-            OWNER_CELL="{\small \href{mailto:$AUTHOR_EMAIL}{$AUTHOR_DISPLAY}}"
+            OWNER_CELL="{\small \href{mailto:$MANAGER_EMAIL}{$MANAGER_DISPLAY}}"
+        fi
+
+        if [[ $DEBUG == 1 ]]; then 
+            print_text "${ECHO_GREY}DEBUG: OWNER_CELL = $OWNER_CELL${ECHO_NC}"
         fi
 
         # PR created date
@@ -335,7 +351,7 @@ print_text "Report template copied to $(pwd)/out/$MONTH_TEMPLATE_FILE"
 sed -i \
     -e "s|==AUTHOR==|$AUTHOR_DISPLAY|" \
     -e "s|==AUTHOR_TITLE==|$AUTHOR_TITLE|" \
-    -e "s|==MANAGER==|$MANAGER|" \
+    -e "s|==MANAGER==|$MANAGER_DISPLAY|" \
     -e "s|==MANAGER_TITLE==|$MANAGER_TITLE|" \
     -e "s|==MONTH==|$PARAM_MONTH|" \
     -e "s|==DAYS==|$PARAM_DAYS|" \
