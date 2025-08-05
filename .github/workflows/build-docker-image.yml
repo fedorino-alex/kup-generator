@@ -2,9 +2,8 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+    tags:
+      - '*.*.*'
 
 jobs:
 
@@ -14,5 +13,24 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Extract tag name
+      shell: bash
+      run: |
+        TAG=${GITHUB_REF#refs/tags/}
+        # Remove 'v' prefix if it exists
+        VERSION=${TAG#v}
+        echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+      id: extract_tag
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ vars.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag kup-generator:latest
+      run: docker build . --file Dockerfile --tag fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}
+    - name: Push the Docker image
+      run: docker push fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}
+    - name: Tag image as latest
+      run: docker tag fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }} fedorinoalex/kup-generator:latest
+    - name: Push latest tag
+      run: docker push fedorinoalex/kup-generator:latest
