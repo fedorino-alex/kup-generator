@@ -30,5 +30,7 @@ COPY ./accuris-logo.png .
 COPY ./calendar.txt .
 COPY ./report.sh .
 
+RUN chmod +x report.sh
+
 ENTRYPOINT [ "./report.sh" ]
 
