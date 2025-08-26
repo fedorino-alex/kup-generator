@@ -125,6 +125,7 @@ print_text "Searching PRs from $START_DATE..."
 
 PROJECTS=$(az devops project list | jq -r '.value[].name')
 while read project; do
+
     print_text # empty line
     print_text "Searching project $project..."
 
@@ -327,16 +328,16 @@ while read project; do
     done <<< $PULL_REQUESTS
 done <<< $PROJECTS
 
-PERCENTAGE=$(echo "scale=2; ($TOTAL_HOURS * 100) / ($PARAM_DAYS * 8)" | bc)
+PERCENTAGE=$(echo "scale=2; ($TOTAL_HOURS * 100) / (($PARAM_DAYS - $PARAM_ABS) * 8)" | bc)
 
 echo
 echo "PRs have been collected!"
 if (( $(echo "$PERCENTAGE < 25" | bc -l) )); then
-    echo -e "${ECHO_RED}Total hours for this month: $TOTAL_HOURS of $(echo "$PARAM_DAYS * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
+    echo -e "${ECHO_RED}Total hours for this month: $TOTAL_HOURS of $(echo "($PARAM_DAYS - $PARAM_ABS) * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
 elif (( $(echo "$PERCENTAGE < 50" | bc -l) )); then
-    echo -e "${ECHO_YELLOW}Total hours for this month: $TOTAL_HOURS of $(echo "$PARAM_DAYS * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
+    echo -e "${ECHO_YELLOW}Total hours for this month: $TOTAL_HOURS of $(echo "($PARAM_DAYS - $PARAM_ABS) * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
 else
-    echo -e "${ECHO_GREEN}Total hours for this month: $TOTAL_HOURS of $(echo "$PARAM_DAYS * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
+    echo -e "${ECHO_GREEN}Total hours for this month: $TOTAL_HOURS of $(echo "($PARAM_DAYS - $PARAM_ABS) * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
 fi
 echo
 
