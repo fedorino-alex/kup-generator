@@ -1,14 +1,6 @@
 #!/bin/bash
 set -o pipefail
 
-# constants
-ECHO_RED='\033[0;31m'       # errors color
-ECHO_GREEN='\033[0;32m'     # success color
-ECHO_YELLOW='\033[0;33m'    # info color
-ECHO_CYAN='\033[0;36m'      # warning color
-ECHO_GREY='\033[0;90m'      # debug color
-ECHO_NC='\033[0m'           # No Color or just text
-
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
 # parse options
@@ -20,9 +12,9 @@ while [[ "$#" -gt 0 ]]; do
         --mode)
             shift
             case $1 in
-                debug) DEBUG=1; SILENT=0; echo -e "${ECHO_GREY}DEBUG: We run in debug mode${ECHO_NC}" ;;
+                debug) DEBUG=1; SILENT=0; print_debug "We run in debug mode" ;;
                 silent) DEBUG=0; SILENT=1 ;;
-                *) echo -e "${ECHO_RED}Invalid mode: $1, values are 'debug' or 'silent'${ECHO_NC}"; exit 1 ;;
+                *) print_error "Invalid mode: $1, values are 'debug' or 'silent'"; exit 1 ;;
             esac
             ;;
     esac
@@ -31,6 +23,9 @@ done
 
 function print_error() {
     local text="$1"
+    local ECHO_RED='\033[0;31m'       # errors color
+    local ECHO_NC='\033[0m'           # No Color or just text
+
     if [[ "$SILENT" == 0 ]]; then
         echo -e "${ECHO_RED}$text${ECHO_NC}"
     fi
@@ -38,6 +33,9 @@ function print_error() {
 
 function print_warning() {
     local text="$1"
+    local ECHO_CYAN='\033[0;36m'      # warning color
+    local ECHO_NC='\033[0m'           # No Color or just text
+
     if [[ "$SILENT" == 0 ]]; then
         echo -e "${ECHO_CYAN}$text${ECHO_NC}"
     fi
@@ -45,6 +43,9 @@ function print_warning() {
 
 function print_info() {
     local text="$1"
+    local ECHO_YELLOW='\033[0;33m'    # info color
+    local ECHO_NC='\033[0m'           # No Color or just text
+
     if [[ "$SILENT" == 0 ]]; then
         echo -e "${ECHO_YELLOW}$text${ECHO_NC}"
     fi
@@ -52,6 +53,9 @@ function print_info() {
 
 function print_debug() {
     local text="$1"
+    local ECHO_GREY='\033[0;90m'      # debug color
+    local ECHO_NC='\033[0m'           # No Color or just text
+
     if [[ "$DEBUG" == 1 && "$SILENT" == 0 ]]; then
         echo -e "${ECHO_GREY}DEBUG: $text${ECHO_NC}"
     fi
@@ -59,6 +63,9 @@ function print_debug() {
 
 function print_success() {
     local text="$1"
+    local ECHO_GREEN='\033[0;32m'     # success color
+    local ECHO_NC='\033[0m'           # No Color or just text
+
     if [[ "$SILENT" == 0 ]]; then
         echo -e "${ECHO_GREEN}$text${ECHO_NC}"
     fi
