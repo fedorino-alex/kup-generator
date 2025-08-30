@@ -393,25 +393,31 @@ while read -r project; do
 
 done <<< "$PROJECTS"
 
-PERCENTAGE=$(echo "scale=2; ($TOTAL_HOURS * 100) / ($PARAM_DAYS * 8)" | bc)
+# Calculate percentage using integer arithmetic
+TOTAL_EXPECTED_HOURS=$((PARAM_DAYS * 8))
+# Use integer percentage (rounded)
+PERCENTAGE=$((TOTAL_HOURS * 100 / TOTAL_EXPECTED_HOURS))
 
 print_success
 print_success "PRs have been collected!"
 
-if (( $(echo "$PERCENTAGE < 25" | bc -l) )); then
-    echo -e "${ECHO_RED}Total hours for this month: $TOTAL_HOURS of $(echo "$PARAM_DAYS * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
-elif (( $(echo "$PERCENTAGE < 50" | bc -l) )); then
-    echo -e "${ECHO_YELLOW}Total hours for this month: $TOTAL_HOURS of $(echo "$PARAM_DAYS * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
+# Compare using integer percentage values
+if (( PERCENTAGE < 25 )); then
+    print_error "Total hours for this month: $TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($PERCENTAGE%)"
+elif (( PERCENTAGE < 50 )); then
+    print_warning "Total hours for this month: $TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($PERCENTAGE%)"
+elif (( PERCENTAGE > 70 )); then
+    print_error "TOO MUCH!!! Total hours for this month: $TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($PERCENTAGE%)"
 else
-    echo -e "${ECHO_GREEN}Total hours for this month: $TOTAL_HOURS of $(echo "$PARAM_DAYS * 8" | bc) ($PERCENTAGE%)${ECHO_NC}"
+    print_success "Total hours for this month: $TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($PERCENTAGE%)"
 fi
-
-print_text
 
 # stop program if we are in silent mode
 if [[ $SILENT -eq 1 ]]; then
     exit 0
 fi
+
+print_text
 
 MONTH_TEMPLATE_FILE="$AUTHOR_DISPLAY, $(date +%Y-%m).tex"
 cp -f "kup_report_template.tex" "$(pwd)/out/$MONTH_TEMPLATE_FILE"
