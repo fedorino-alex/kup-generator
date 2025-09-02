@@ -22,59 +22,53 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 function print_error() {
-    local text="$1"
     local ECHO_RED='\033[0;31m'       # errors color
     local ECHO_NC='\033[0m'           # No Color or just text
 
-    if [[ "$SILENT" == 0 ]]; then
-        echo -e "${ECHO_RED}$text${ECHO_NC}"
-    fi
-}
-
-function print_warning() {
-    local text="$1"
-    local ECHO_CYAN='\033[0;36m'      # warning color
-    local ECHO_NC='\033[0m'           # No Color or just text
-
-    if [[ "$SILENT" == 0 ]]; then
-        echo -e "${ECHO_CYAN}$text${ECHO_NC}"
+    if (( SILENT == 0 )); then
+        echo -e "${ECHO_RED}$1${ECHO_NC}"
     fi
 }
 
 function print_info() {
-    local text="$1"
+    local ECHO_CYAN='\033[0;36m'      # warning color
+    local ECHO_NC='\033[0m'           # No Color or just text
+
+    if (( SILENT == 0 )); then
+        echo -e "${ECHO_CYAN}$1${ECHO_NC}"
+    fi
+}
+
+function print_warning() {
     local ECHO_YELLOW='\033[0;33m'    # info color
     local ECHO_NC='\033[0m'           # No Color or just text
 
-    if [[ "$SILENT" == 0 ]]; then
-        echo -e "${ECHO_YELLOW}$text${ECHO_NC}"
+    if (( SILENT == 0 )); then
+        echo -e "${ECHO_YELLOW}$1${ECHO_NC}"
     fi
 }
 
 function print_debug() {
-    local text="$1"
     local ECHO_GREY='\033[0;90m'      # debug color
     local ECHO_NC='\033[0m'           # No Color or just text
 
-    if [[ "$DEBUG" == 1 && "$SILENT" == 0 ]]; then
-        echo -e "${ECHO_GREY}DEBUG: $text${ECHO_NC}"
+    if (( DEBUG == 1 && SILENT == 0 )); then
+        echo -e "${ECHO_GREY}DEBUG: $1${ECHO_NC}"
     fi
 }
 
 function print_success() {
-    local text="$1"
     local ECHO_GREEN='\033[0;32m'     # success color
     local ECHO_NC='\033[0m'           # No Color or just text
 
-    if [[ "$SILENT" == 0 ]]; then
-        echo -e "${ECHO_GREEN}$text${ECHO_NC}"
+    if (( SILENT == 0 )); then
+        echo -e "${ECHO_GREEN}$1${ECHO_NC}"
     fi
 }
 
 function print_text() {
-    local text="$1"
-    if [[ "$SILENT" == 0 ]]; then
-        echo -e "$text"
+    if (( SILENT == 0 )); then
+        echo -e "$1"
     fi
 }
 
@@ -113,13 +107,13 @@ print_debug "AUTH = $AUTH"
 TOTAL_HOURS="0"
 LINE_NUMBER="1"
 KUP_PATTERN='(?<=\[KUP:)\s*\d+([\.,]\d+)?(?=\])'
-declare -A KNOWN_COMMITS
 
 # reading input parameters
 PARAM_MONTH=$(date -d "$START_DATE" +%B)
 PARAM_DAYS=$(sed -n "$(date +%m)p" calendar.txt | cut -f2 -d '|')
+PARAM_ABS="0"
 
-if [[ "$SILENT" == 0 ]]; then 
+if (( SILENT == 0 )); then
     if [ -z "$PARAM_DAYS" ]; then
         echo -n 'Working days in the Period: '
         read -r PARAM_DAYS
@@ -127,10 +121,8 @@ if [[ "$SILENT" == 0 ]]; then
         print_text "Working days in the Period: $PARAM_DAYS"
     fi
 
-    if [ -z "$PARAM_ABS" ]; then
-        echo -n 'Authors days of absence: '
-        read -r PARAM_ABS
-    fi
+    echo -n 'Authors days of absence: '
+    read -r PARAM_ABS
 fi 
 
 rm -f "_lines.txt"
@@ -174,7 +166,7 @@ function check_pr_title() {
     print_debug "PR title HOURS = [$HOURS]" 
 
     if [ -n "$HOURS" ]; then
-        print_info "Hours found in PR Title"
+        print_success "Found $HOURS hours in PR Title"
     fi
 }
 
@@ -189,7 +181,7 @@ function check_pr_description() {
     print_debug "PR description HOURS = [$HOURS]" 
 
     if [ -n "$HOURS" ]; then
-        print_info "Hours found in PR Description"
+        print_success "Found $HOURS hours in PR Description"
     fi
 }
 
@@ -205,10 +197,11 @@ function check_pr_tags() {
     print_debug "PR tags HOURS = $HOURS"
 
     if [ -n "$HOURS" ]; then
-        print_info "Hours found in PR Tags"
+        print_success "Found $HOURS hours in PR Tags"
     fi
 }
 
+declare -A KNOWN_COMMITS
 function check_pr_commits() {
     local pr_url=$1
     local commits_response
@@ -267,7 +260,7 @@ function check_pr_commits() {
 
     if [ $pr_hours -gt 0 ]; then
         HOURS=$pr_hours
-        print_info "Hours found in PR Commits"
+        print_success "Found $HOURS hours in PR Commits"
     fi
 }
 
@@ -346,15 +339,15 @@ while read -r project; do
     --query '[?closedDate > `'"$START_DATE"'`].{title: title, description: description, id: pullRequestId, url: url, closedDate: closedDate}' | jq -rc 'sort_by(.closedDate) | .[]' -)
 
     if [ -z "$PULL_REQUESTS" ]; then
-        print_error "No Pull requests found in this project, moving next..."
+        print_warning "No Pull requests found in this project, moving next..."
         continue
     fi
 
     while read -r pr; do 
         PR_URL=$(jq -r '.url' <<< "$pr")
 
-        print_warning # empty line
-        print_warning "$(jq -r '"\(.id) \(.title)"' <<< "$pr")"
+        print_info # empty line
+        print_info "$(jq -r '"\(.id) \(.title)"' <<< "$pr")"
 
         print_debug
         print_debug "URL = $PR_URL"
@@ -380,19 +373,17 @@ while read -r project; do
 
         # skip PR if no hours found
         if [ -z "$HOURS" ]; then
-            print_error "KUP has not been found, skip this PR"
+            print_warning "KUP has not been found, skip this PR"
             continue
         fi
 
-        print_success "HOURS: $HOURS"
-
         # building result file only in normal mode (not silent)
-        if [[ $SILENT -ne 1 ]]; then
+        if (( SILENT == 0 )); then
             append_pr_line "$pr" $LINE_NUMBER
         fi
 
         # Increase TOTAL_HOURS
-        TOTAL_HOURS=$((TOTAL_HOURS + HOURS))
+        ((TOTAL_HOURS += HOURS))
 
         # Increase line LINE_NUMBER
         LINE_NUMBER=$((LINE_NUMBER + 1))
@@ -400,27 +391,43 @@ while read -r project; do
 
 done <<< "$PROJECTS"
 
-# Calculate percentage using integer arithmetic
+# Calculate percentage using awk for floating-point arithmetic
 TOTAL_EXPECTED_HOURS=$((PARAM_DAYS * 8))
-# Use integer percentage (rounded)
-PERCENTAGE=$((TOTAL_HOURS * 100 / TOTAL_EXPECTED_HOURS))
+PERSONAL_REPORTED_HOURS=$((TOTAL_EXPECTED_HOURS - PARAM_ABS * 8))
+PERSONAL_PERCENTAGE=$(awk "BEGIN {printf \"%.2f\", ($TOTAL_HOURS * 100) / $PERSONAL_REPORTED_HOURS}")
+OVERALL_PERCENTAGE=$(awk "BEGIN {printf \"%.2f\", ($TOTAL_HOURS * 100) / $TOTAL_EXPECTED_HOURS}")
 
 print_success
 print_success "PRs have been collected!"
 
-# Compare using integer percentage values
-if (( PERCENTAGE < 25 )); then
-    print_error "Total hours for this month: $TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($PERCENTAGE%)"
-elif (( PERCENTAGE < 50 )); then
-    print_warning "Total hours for this month: $TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($PERCENTAGE%)"
-elif (( PERCENTAGE > 70 )); then
-    print_error "TOO MUCH!!! Total hours for this month: $TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($PERCENTAGE%)"
+if (( $(awk "BEGIN {print ($PERSONAL_PERCENTAGE > 70)}") )); then
+    print_error
+    print_error "You worked hard for $TOTAL_HOURS hours of $PERSONAL_REPORTED_HOURS reported in this month and have personal busy $PERSONAL_PERCENTAGE%."
+    print_error "Sorry, but this is TOO MUCH (> 70%) and very suspicious!!!"
+    print_error
+fi
+
+# Compare using awk for floating-point comparisons
+if (( $(awk "BEGIN {print ($OVERALL_PERCENTAGE < 25)}") )); then
+    print_error
+    print_error "Total hours for this month:"
+    print_error "\t$TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($OVERALL_PERCENTAGE%)"
+elif (( $(awk "BEGIN {print ($OVERALL_PERCENTAGE < 50)}") )); then
+    print_warning
+    print_warning "Total hours for this month:"
+    print_warning "\t$TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($OVERALL_PERCENTAGE%)"
+elif (( $(awk "BEGIN {print ($OVERALL_PERCENTAGE > 70)}") )); then
+    print_error
+    print_error "TOO MUCH!!! Total hours for this month:"
+    print_error "\t$TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($OVERALL_PERCENTAGE%)"
 else
-    print_success "Total hours for this month: $TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($PERCENTAGE%)"
+    print_success
+    print_success "Total hours for this month:"
+    print_success "\t$TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($OVERALL_PERCENTAGE%)"
 fi
 
 # stop program if we are in silent mode
-if [[ $SILENT -eq 1 ]]; then
+if (( SILENT == 1 )); then
     exit 0
 fi
 
@@ -443,7 +450,7 @@ sed -i \
     d}" \
     "./out/$MONTH_TEMPLATE_FILE"
 
-if [[ "$DEBUG" == 1 ]]; then
+if (( DEBUG == 1 )); then
     # Run pdf creation
     pdflatex -interaction=batchmode -output-directory=./out "./out/$MONTH_TEMPLATE_FILE"
 else
