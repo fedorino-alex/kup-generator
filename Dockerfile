@@ -21,7 +21,6 @@ RUN az extension add --name azure-devops
 RUN az devops configure --defaults organization=https://dev.azure.com/pdd-ihsmarkit/
 
 RUN apt-get install -y jq
-RUN apt-get install -y bc
 
 WORKDIR /kup
 
