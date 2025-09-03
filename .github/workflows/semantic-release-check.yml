@@ -59,8 +59,7 @@ jobs:
                   { "type": "test", "release": false },
                   { "type": "build", "release": "patch" },
                   { "type": "ci", "release": false },
-                  { "scope": "BREAKING", "release": "major" },
-                  { "release": "patch" }
+                  { "scope": "BREAKING", "release": "major" }
                 ]
               }
             ],
