@@ -56,7 +56,7 @@ jobs:
                   { "type": "chore", "release": false },
                   { "type": "refactor", "release": "patch" },
                   { "type": "test", "release": false },
-                  { "type": "build", "release": "S" },
+                  { "type": "build", "release": "patch" },
                   { "type": "ci", "release": false },
                   { "scope": "BREAKING", "release": "major" },
                   { "release": false }
