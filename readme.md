@@ -1,5 +1,13 @@
 # KUP Report generator
+
+[![Semantic Release](https://img.shields.io/badge/semantic--release-enabled-brightgreen?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
+[![Docker Image](https://img.shields.io/docker/v/fedorinoalex/kup-generator?logo=docker&label=docker)](https://hub.docker.com/r/fedorinoalex/kup-generator)
+
 Collects all pull requests for current month and prepare PDF report according to provided template. Track only PRs, where `[KUP:<hours>]` text is in **title** or **description** fields. PDF file builds from LaTeX template.
+
+## Contributing
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) for automatic semantic versioning. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for commit message format and contribution guidelines.
 
 # Run docker-compose
 
