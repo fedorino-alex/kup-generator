@@ -30,7 +30,6 @@ jobs:
       run: |
         npm install -g semantic-release
         npm install -g @semantic-release/changelog
-        npm install -g @semantic-release/git
         npm install -g @semantic-release/github
         npm install -g conventional-changelog-conventionalcommits
     
@@ -77,15 +76,6 @@ jobs:
               }
             ],
             [
-              "@semantic-release/git",
-              {
-                "assets": [
-                  "CHANGELOG.md"
-                ],
-                "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-              }
-            ],
-            [
               "@semantic-release/github",
               {
                 "successComment": "🎉 This PR is included in version [${nextRelease.version}](${releases.filter(release => !!release.name)[0].url}) 🎉",
@@ -99,4 +89,11 @@ jobs:
     - name: Run semantic-release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: semantic-release
+      run: |
+        echo "🔍 Current git config:"
+        git config --list | grep -E "(user|remote)" || true
+        echo "🔍 Current branch and tags:"
+        git branch --show-current
+        git tag --list | tail -5
+        echo "🚀 Running semantic-release..."
+        semantic-release
