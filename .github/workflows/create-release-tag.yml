@@ -1,0 +1,106 @@
+name: Create Release Tag
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install semantic-release
+      run: npm install -g semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator
+    
+    - name: Calculate next version
+      id: version
+      run: |
+        # Create minimal config for version calculation only
+        cat > .releaserc.json << 'EOF'
+        {
+          "branches": ["main", "master"],
+          "tagFormat": "${version}",
+          "plugins": [
+            [
+              "@semantic-release/commit-analyzer",
+              {
+                "preset": "conventionalcommits",
+                "releaseRules": [
+                  { "type": "feat", "release": "minor" },
+                  { "type": "fix", "release": "patch" },
+                  { "type": "perf", "release": "patch" },
+                  { "type": "revert", "release": "patch" },
+                  { "type": "docs", "release": "patch" },
+                  { "type": "refactor", "release": "patch" },
+                  { "type": "build", "release": "patch" },
+                  { "type": "style", "release": false },
+                  { "type": "chore", "release": false },
+                  { "type": "test", "release": false },
+                  { "type": "ci", "release": false },
+                  { "scope": "BREAKING", "release": "major" }
+                ]
+              }
+            ],
+            ["@semantic-release/release-notes-generator"]
+          ],
+          "dryRun": false
+        }
+        EOF
+        
+        echo "🔍 Analyzing commits for version calculation..."
+        
+        # Run semantic-release to get the next version
+        npx semantic-release --dry-run --no-ci > release-output.txt 2>&1 || true
+        
+        # Extract version from output
+        NEXT_VERSION=""
+        if grep -q "The next release version is" release-output.txt; then
+          NEXT_VERSION=$(grep "The next release version is" release-output.txt | sed 's/.*The next release version is //' | head -1)
+        fi
+        
+        if [ -z "$NEXT_VERSION" ]; then
+          echo "🔍 No release needed - only non-releasing commits found"
+          echo "release_needed=false" >> $GITHUB_OUTPUT
+        else
+          echo "🚀 Next version will be: $NEXT_VERSION"
+          echo "release_needed=true" >> $GITHUB_OUTPUT
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "📋 Semantic Release Analysis:"
+        cat release-output.txt
+    
+    - name: Create and push tag
+      if: steps.version.outputs.release_needed == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        
+        echo "🏷️ Creating tag: $VERSION"
+        
+        # Configure git
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Create and push tag
+        git tag -a "$VERSION" -m "Release $VERSION"
+        git push origin "$VERSION"
+        
+        echo "✅ Tag $VERSION created and pushed successfully!"
+        echo "🔄 This will trigger the Docker build workflow..."
