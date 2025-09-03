@@ -1,9 +1,8 @@
 name: Docker Image CI
 
 on:
-  push:
-    tags:
-      - '*.*.*'
+  release:
+    types: [published]
 
 jobs:
 
@@ -16,10 +15,12 @@ jobs:
     - name: Extract tag name
       shell: bash
       run: |
-        TAG=${GITHUB_REF#refs/tags/}
+        # For release events, use the tag name from the release
+        TAG="${{ github.event.release.tag_name }}"
         # Remove 'v' prefix if it exists
         VERSION=${TAG#v}
         echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+        echo "full_tag=${TAG}" >> $GITHUB_OUTPUT
       id: extract_tag
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
@@ -34,57 +35,3 @@ jobs:
       run: docker tag fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }} fedorinoalex/kup-generator:latest
     - name: Push latest tag
       run: docker push fedorinoalex/kup-generator:latest
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Fetch all history for proper changelog generation
-    - name: Extract tag name
-      shell: bash
-      run: |
-        TAG=${GITHUB_REF#refs/tags/}
-        VERSION=${TAG#v}
-        echo "tag=${VERSION}" >> $GITHUB_OUTPUT
-        echo "full_tag=${TAG}" >> $GITHUB_OUTPUT
-      id: extract_tag
-    - name: Generate changelog
-      shell: bash
-      run: |
-        # Get the previous tag
-        PREV_TAG=$(git tag --sort=-version:refname | grep -A1 "${{ steps.extract_tag.outputs.full_tag }}" | tail -n1)
-        if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "${{ steps.extract_tag.outputs.full_tag }}" ]; then
-          # If no previous tag, get all commits
-          CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
-        else
-          # Get commits since previous tag
-          CHANGELOG=$(git log ${PREV_TAG}..${{ steps.extract_tag.outputs.full_tag }} --pretty=format:"- %s (%h)" --no-merges)
-        fi
-        echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-        echo "$CHANGELOG" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
-    - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.extract_tag.outputs.full_tag }}
-        release_name: Release ${{ steps.extract_tag.outputs.tag }}
-        body: |
-          ## What's Changed
-          
-          ${{ env.CHANGELOG }}
-          
-          ## Docker Image
-          
-          You can pull the Docker image for this release:
-          ```bash
-          docker pull fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}
-          ```
-        draft: false
-        prerelease: false
