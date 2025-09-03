@@ -1,82 +1,151 @@
-name: 🐳 Build & Release Docker Image
+name: Release & Build Docker Image
 
 on:
   push:
-    tags:
-      - '*.*.*'
-      - 'v*.*.*'
+    branches:
+      - main
+      - master
 
 jobs:
-
-  build:
-
+  release:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+    
     steps:
-    - uses: actions/checkout@v4
-    - name: Extract tag name
-      shell: bash
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install semantic-release
+      run: npm install -g semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator conventional-changelog-conventionalcommits
+    
+    - name: 🔍 Calculate next version
+      id: version
       run: |
-        if [[ "${{ github.event_name }}" == "push" ]]; then
-          # For tag push events, extract from GITHUB_REF
-          TAG=${GITHUB_REF#refs/tags/}
-          echo "🏷️ Triggered by tag push: $TAG"
-        elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          # For manual triggers, use the input tag
-          TAG="${{ inputs.tag }}"
-          echo "🔧 Triggered manually for tag: $TAG"
-        else
-          echo "❌ Unexpected event type: ${{ github.event_name }}"
-          exit 1
+        # Create minimal config for version calculation only
+        cat > .releaserc.json << 'EOF'
+        {
+          "branches": ["main", "master"],
+          "tagFormat": "${version}",
+          "plugins": [
+            [
+              "@semantic-release/commit-analyzer",
+              {
+                "preset": "conventionalcommits",
+                "releaseRules": [
+                  { "type": "feat", "release": "minor" },
+                  { "type": "fix", "release": "patch" },
+                  { "type": "perf", "release": "patch" },
+                  { "type": "revert", "release": "patch" },
+                  { "type": "docs", "release": "patch" },
+                  { "type": "refactor", "release": "patch" },
+                  { "type": "build", "release": "patch" },
+                  { "type": "style", "release": false },
+                  { "type": "chore", "release": false },
+                  { "type": "test", "release": false },
+                  { "type": "ci", "release": false },
+                  { "scope": "BREAKING", "release": "major" }
+                ]
+              }
+            ],
+            ["@semantic-release/release-notes-generator"]
+          ],
+          "dryRun": false
+        }
+        EOF
+        
+        echo "🔍 Analyzing commits for version calculation..."
+        
+        # Run semantic-release to get the next version
+        npx semantic-release --dry-run --no-ci > release-output.txt 2>&1 || true
+        
+        # Extract version from output
+        NEXT_VERSION=""
+        if grep -q "The next release version is" release-output.txt; then
+          NEXT_VERSION=$(grep "The next release version is" release-output.txt | sed 's/.*The next release version is //' | head -1)
         fi
         
-        echo "🏷️ Processing tag: $TAG"
+        if [ -z "$NEXT_VERSION" ]; then
+          echo "� No release needed - only non-releasing commits found"
+          echo "release_needed=false" >> $GITHUB_OUTPUT
+        else
+          echo "🚀 Next version will be: $NEXT_VERSION"
+          echo "release_needed=true" >> $GITHUB_OUTPUT
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+        fi
         
-        # Remove 'v' prefix if it exists
-        VERSION=${TAG#v}
-        echo "📦 Docker version: $VERSION"
+        echo "📋 Semantic Release Analysis:"
+        cat release-output.txt
+    
+    - name: 🏷️ Create Git tag
+      if: steps.version.outputs.release_needed == 'true'
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
         
-        echo "tag=${VERSION}" >> $GITHUB_OUTPUT
-        echo "full_tag=${TAG}" >> $GITHUB_OUTPUT
-      id: extract_tag
+        echo "🏷️ Creating tag: $VERSION"
+        
+        # Configure git
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Create tag locally (don't push yet)
+        git tag -a "$VERSION" -m "Release $VERSION"
+        
+        echo "✅ Tag $VERSION created locally"
     - name: 🔑 Log in to Docker Hub
+      if: steps.version.outputs.release_needed == 'true'
       uses: docker/login-action@v3
       with:
         username: ${{ vars.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
     - name: 🐳 Build the Docker image
+      if: steps.version.outputs.release_needed == 'true'
       run: |
-        echo "🔨 Building Docker image: fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}"
-        docker build . --file Dockerfile --tag fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}
+        echo "🔨 Building Docker image: fedorinoalex/kup-generator:${{ steps.version.outputs.version }}"
+        docker build . --file Dockerfile --tag fedorinoalex/kup-generator:${{ steps.version.outputs.version }}
     - name: 📤 Push the Docker image
+      if: steps.version.outputs.release_needed == 'true'
       run: |
-        echo "⬆️ Pushing version tag: ${{ steps.extract_tag.outputs.tag }}"
-        docker push fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}
+        echo "⬆️ Pushing version tag: ${{ steps.version.outputs.version }}"
+        docker push fedorinoalex/kup-generator:${{ steps.version.outputs.version }}
     - name: 🏷️ Tag image as latest
+      if: steps.version.outputs.release_needed == 'true'
       run: |
         echo "🔗 Tagging as latest..."
-        docker tag fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }} fedorinoalex/kup-generator:latest
+        docker tag fedorinoalex/kup-generator:${{ steps.version.outputs.version }} fedorinoalex/kup-generator:latest
     - name: 📤 Push latest tag
+      if: steps.version.outputs.release_needed == 'true'
       run: |
         echo "⬆️ Pushing latest tag..."
         docker push fedorinoalex/kup-generator:latest
     - name: 📝 Generate changelog for release
+      if: steps.version.outputs.release_needed == 'true'
       shell: bash
       run: |
         echo "📋 Generating changelog for release..."
         
-        # Get the previous tag
-        CURRENT_TAG="${{ steps.extract_tag.outputs.full_tag }}"
-        PREV_TAG=$(git tag --sort=-version:refname | grep -A1 "$CURRENT_TAG" | tail -n1)
+        # Get the current version
+        VERSION="${{ steps.version.outputs.version }}"
         
-        if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$CURRENT_TAG" ]; then
+        # Get the previous tag
+        PREV_TAG=$(git tag --sort=-version:refname | head -n1 2>/dev/null || echo "")
+        
+        if [ -z "$PREV_TAG" ]; then
           # If no previous tag, get all commits
           echo "📜 No previous tag found, getting recent commits..."
           CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges HEAD~10..HEAD)
         else
           # Get commits since previous tag
           echo "📜 Getting commits since $PREV_TAG..."
-          CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges ${PREV_TAG}..${CURRENT_TAG})
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges ${PREV_TAG}..HEAD)
         fi
         
         echo "CHANGELOG<<EOF" >> $GITHUB_ENV
@@ -84,12 +153,21 @@ jobs:
         echo "EOF" >> $GITHUB_ENV
         echo "✅ Changelog generated successfully"
       id: generate_changelog
+    
+    - name: 🏷️ Push Git tag
+      if: steps.version.outputs.release_needed == 'true'
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        echo "🚀 Pushing tag: $VERSION"
+        git push origin "$VERSION"
+        echo "✅ Tag $VERSION pushed successfully!"
+    
     - name: 🚀 Create GitHub Release
+      if: steps.version.outputs.release_needed == 'true'
       uses: actions/github-script@v7
       with:
         script: |
-          const tag = '${{ steps.extract_tag.outputs.full_tag }}';
-          const version = '${{ steps.extract_tag.outputs.tag }}';
+          const version = '${{ steps.version.outputs.version }}';
           
           console.log(`🚀 Creating GitHub release for version ${version}...`);
           
@@ -118,7 +196,7 @@ jobs:
           const { data: release } = await github.rest.repos.createRelease({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            tag_name: tag,
+            tag_name: version,
             name: `🚀 Release ${version}`,
             body: releaseBody,
             draft: false,
