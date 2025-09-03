@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: 🐳 Build & Release Docker Image
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
         if [[ "${{ github.event_name }}" == "push" ]]; then
           # For tag push events, extract from GITHUB_REF
           TAG=${GITHUB_REF#refs/tags/}
-          echo "�️ Triggered by tag push: $TAG"
+          echo "🏷️ Triggered by tag push: $TAG"
         elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           # For manual triggers, use the input tag
           TAG="${{ inputs.tag }}"
@@ -39,46 +39,59 @@ jobs:
         echo "tag=${VERSION}" >> $GITHUB_OUTPUT
         echo "full_tag=${TAG}" >> $GITHUB_OUTPUT
       id: extract_tag
-    - name: Log in to Docker Hub
+    - name: 🔑 Log in to Docker Hub
       uses: docker/login-action@v3
       with:
         username: ${{ vars.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}
-    - name: Push the Docker image
-      run: docker push fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}
-    - name: Tag image as latest
-      run: docker tag fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }} fedorinoalex/kup-generator:latest
-    - name: Push latest tag
-      run: docker push fedorinoalex/kup-generator:latest
-    
-    - name: Generate changelog for release
+    - name: 🐳 Build the Docker image
+      run: |
+        echo "🔨 Building Docker image: fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}"
+        docker build . --file Dockerfile --tag fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}
+    - name: 📤 Push the Docker image
+      run: |
+        echo "⬆️ Pushing version tag: ${{ steps.extract_tag.outputs.tag }}"
+        docker push fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }}
+    - name: 🏷️ Tag image as latest
+      run: |
+        echo "🔗 Tagging as latest..."
+        docker tag fedorinoalex/kup-generator:${{ steps.extract_tag.outputs.tag }} fedorinoalex/kup-generator:latest
+    - name: 📤 Push latest tag
+      run: |
+        echo "⬆️ Pushing latest tag..."
+        docker push fedorinoalex/kup-generator:latest
+    - name: 📝 Generate changelog for release
       shell: bash
       run: |
+        echo "📋 Generating changelog for release..."
+        
         # Get the previous tag
         CURRENT_TAG="${{ steps.extract_tag.outputs.full_tag }}"
         PREV_TAG=$(git tag --sort=-version:refname | grep -A1 "$CURRENT_TAG" | tail -n1)
         
         if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$CURRENT_TAG" ]; then
           # If no previous tag, get all commits
+          echo "📜 No previous tag found, getting recent commits..."
           CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges HEAD~10..HEAD)
         else
           # Get commits since previous tag
+          echo "📜 Getting commits since $PREV_TAG..."
           CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges ${PREV_TAG}..${CURRENT_TAG})
         fi
         
         echo "CHANGELOG<<EOF" >> $GITHUB_ENV
         echo "$CHANGELOG" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
+        echo "✅ Changelog generated successfully"
       id: generate_changelog
-    
-    - name: Create GitHub Release
+    - name: 🚀 Create GitHub Release
       uses: actions/github-script@v7
       with:
         script: |
           const tag = '${{ steps.extract_tag.outputs.full_tag }}';
           const version = '${{ steps.extract_tag.outputs.tag }}';
+          
+          console.log(`🚀 Creating GitHub release for version ${version}...`);
           
           const releaseBody = `## What's Changed
           
@@ -106,10 +119,10 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             tag_name: tag,
-            name: \`Release \${version}\`,
+            name: `🚀 Release ${version}`,
             body: releaseBody,
             draft: false,
             prerelease: false
           });
           
-          console.log(\`Created release: \${release.html_url}\`);
+          console.log(`✅ Created release: ${release.html_url}`);
