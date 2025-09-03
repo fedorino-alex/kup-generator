@@ -1,0 +1,195 @@
+name: Semantic Release Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  semantic-release-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install semantic-release dependencies
+      run: |
+        npm install -g semantic-release
+        npm install -g @semantic-release/changelog
+        npm install -g @semantic-release/git
+        npm install -g @semantic-release/github
+        npm install -g conventional-changelog-conventionalcommits
+    
+    - name: Create .releaserc.json config
+      run: |
+        cat > .releaserc.json << 'EOF'
+        {
+          "branches": [
+            "main",
+            "master"
+          ],
+          "plugins": [
+            [
+              "@semantic-release/commit-analyzer",
+              {
+                "preset": "conventionalcommits",
+                "releaseRules": [
+                  { "type": "feat", "release": "minor" },
+                  { "type": "fix", "release": "patch" },
+                  { "type": "perf", "release": "patch" },
+                  { "type": "revert", "release": "patch" },
+                  { "type": "docs", "release": "patch" },
+                  { "type": "style", "release": false },
+                  { "type": "chore", "release": false },
+                  { "type": "refactor", "release": "patch" },
+                  { "type": "test", "release": false },
+                  { "type": "build", "release": "patch" },
+                  { "type": "ci", "release": false },
+                  { "scope": "BREAKING", "release": "major" },
+                  { "release": "patch" }
+                ]
+              }
+            ],
+            [
+              "@semantic-release/release-notes-generator",
+              {
+                "preset": "conventionalcommits"
+              }
+            ]
+          ]
+        }
+        EOF
+    
+    - name: Run semantic-release dry-run
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "🔍 Running semantic-release in dry-run mode..."
+        npx semantic-release --dry-run --no-ci > semantic-release-output.txt 2>&1
+        
+        # Capture the exit code
+        SEMANTIC_EXIT_CODE=$?
+        
+        echo "📋 Semantic Release Output:"
+        cat semantic-release-output.txt
+        
+        # Extract version information if available
+        if grep -q "The next release version is" semantic-release-output.txt; then
+          NEXT_VERSION=$(grep "The next release version is" semantic-release-output.txt | sed 's/.*The next release version is //')
+          echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+          echo "release_needed=true" >> $GITHUB_OUTPUT
+        else
+          echo "release_needed=false" >> $GITHUB_OUTPUT
+        fi
+        
+        # Check for any errors
+        if [ $SEMANTIC_EXIT_CODE -ne 0 ]; then
+          echo "semantic_error=true" >> $GITHUB_OUTPUT
+          echo "❌ Semantic release validation failed"
+          exit 1
+        else
+          echo "semantic_error=false" >> $GITHUB_OUTPUT
+          echo "✅ Semantic release validation passed"
+        fi
+      id: semantic_check
+    
+    - name: Comment PR with release preview
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          // Read the semantic-release output
+          let output = '';
+          try {
+            output = fs.readFileSync('semantic-release-output.txt', 'utf8');
+          } catch (error) {
+            output = 'Could not read semantic-release output';
+          }
+          
+          const releaseNeeded = '${{ steps.semantic_check.outputs.release_needed }}' === 'true';
+          const nextVersion = '${{ steps.semantic_check.outputs.next_version }}';
+          const hasError = '${{ steps.semantic_check.outputs.semantic_error }}' === 'true';
+          
+          let emoji = '🔍';
+          let title = 'Semantic Release Check';
+          let summary = '';
+          
+          if (hasError) {
+            emoji = '❌';
+            title = 'Semantic Release Validation Failed';
+            summary = 'There are issues with the conventional commits in this PR.';
+          } else if (releaseNeeded) {
+            emoji = '🚀';
+            title = 'New Release Will Be Created';
+            summary = `When this PR is merged, a new release **${nextVersion}** will be created.`;
+          } else {
+            emoji = '📝';
+            title = 'No Release Will Be Created';
+            summary = 'This PR contains only non-releasing commits (chore, style, test, ci).';
+          }
+          
+          const body = `## ${emoji} ${title}
+          
+          ${summary}
+          
+          <details>
+          <summary>📋 Semantic Release Analysis</summary>
+          
+          \`\`\`
+          ${output}
+          \`\`\`
+          
+          </details>
+          
+          ### 📚 Conventional Commits Reference
+          - \`feat:\` → Minor version bump (new features)
+          - \`fix:\` → Patch version bump (bug fixes)
+          - \`docs:\`, \`refactor:\`, \`perf:\` → Patch version bump
+          - \`chore:\`, \`style:\`, \`test:\`, \`ci:\` → No release
+          - \`feat!:\` or \`BREAKING CHANGE:\` → Major version bump
+          `;
+          
+          // Find existing comment
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.data.find(comment => 
+            comment.user.login === 'github-actions[bot]' && 
+            comment.body.includes('Semantic Release Check')
+          );
+          
+          if (existingComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: body,
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+          }
