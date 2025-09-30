@@ -110,7 +110,7 @@ KUP_PATTERN='(?<=\[KUP:)\s*\d+([\.,]\d+)?(?=\])'
 
 # reading input parameters
 PARAM_MONTH=$(date -d "$START_DATE" +%B)
-PARAM_DAYS=$(sed -n "$(date +%m)p" calendar.txt | cut -f2 -d '|')
+PARAM_DAYS=$(sed -n "$(date +%m)p" "$(date +%Y)-calendar.txt" | cut -f2 -d '|')
 PARAM_ABS="0"
 
 if (( SILENT == 0 )); then
