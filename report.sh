@@ -104,7 +104,7 @@ AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
 print_debug "AZURE_DEVOPS_EXT_PAT = $AZURE_DEVOPS_EXT_PAT"
 print_debug "AUTH = $AUTH"
 
-TOTAL_HOURS="0"
+TOTAL_HOURS="0.0"
 LINE_NUMBER="1"
 KUP_PATTERN='(?<=\[KUP:)\s*\d+([\.,]\d+)?(?=\])'
 
@@ -208,7 +208,7 @@ function check_pr_commits() {
     local commits
     local commit_comment=""
     local commit_id=""
-    local pr_hours=0
+    local pr_hours=0.0
     local commit_hours=0
 
     commits_response=$(curl -s "$pr_url/commits" -H "Authorization: Basic $AUTH")
@@ -250,7 +250,7 @@ function check_pr_commits() {
             commit_hours=$(grep -iPo "$KUP_PATTERN" <<< "$commit_comment" | head -n1 | xargs)
 
             if [ -n "$commit_hours" ]; then
-                pr_hours=$((pr_hours + commit_hours))
+                pr_hours=$(awk "BEGIN {printf \"%.2f\", $pr_hours + $commit_hours}")
             fi
 
         done
@@ -258,7 +258,7 @@ function check_pr_commits() {
         unset IFS;
     fi
 
-    if [ $pr_hours -gt 0 ]; then
+    if (( $(awk "BEGIN {print ($pr_hours > 0)}") )); then
         HOURS=$pr_hours
         print_success "Found $HOURS hours in PR Commits"
     fi
@@ -383,7 +383,7 @@ while read -r project; do
         fi
 
         # Increase TOTAL_HOURS
-        ((TOTAL_HOURS += HOURS))
+        TOTAL_HOURS=$(awk "BEGIN {printf \"%.2f\", $TOTAL_HOURS + $HOURS}")
 
         # Increase line LINE_NUMBER
         LINE_NUMBER=$((LINE_NUMBER + 1))
