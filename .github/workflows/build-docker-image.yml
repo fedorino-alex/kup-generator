@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - master
+    paths-ignore:
+      - '.github/**'
 
 jobs:
   release:
@@ -135,23 +137,48 @@ jobs:
         # Get the current version
         VERSION="${{ steps.version.outputs.version }}"
         
-        # Get the previous tag
-        PREV_TAG=$(git tag --sort=-version:refname | head -n1 2>/dev/null || echo "")
+        # Get the previous tag (excluding the current one if it exists)
+        PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${VERSION}$" | head -n1 2>/dev/null || echo "")
+        
+        echo "🔍 Current version: $VERSION"
+        echo "🔍 Previous tag: $PREV_TAG"
         
         if [ -z "$PREV_TAG" ]; then
-          # If no previous tag, get all commits
+          # If no previous tag, get recent commits
           echo "📜 No previous tag found, getting recent commits..."
-          CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges HEAD~10..HEAD)
+          COMMITS=$(git log --pretty=format:"%s (%h)" --no-merges -10)
         else
           # Get commits since previous tag
           echo "📜 Getting commits since $PREV_TAG..."
-          CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges ${PREV_TAG}..HEAD)
+          COMMITS=$(git log --pretty=format:"%s (%h)" --no-merges ${PREV_TAG}..HEAD)
         fi
         
-        echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-        echo "$CHANGELOG" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
-        echo "✅ Changelog generated successfully"
+        echo "📋 Raw commits found:"
+        echo "$COMMITS"
+        
+        # Format changelog with proper markdown
+        CHANGELOG=""
+        if [ -n "$COMMITS" ]; then
+          while IFS= read -r commit; do
+            if [ -n "$commit" ]; then
+              # Clean up commit message and format as markdown list item
+              clean_commit=$(echo "$commit" | sed 's/["\`]//g' | sed "s/'/'/g")
+              CHANGELOG="${CHANGELOG}- ${clean_commit}"$'\n'
+            fi
+          done <<< "$COMMITS"
+        fi
+        
+        # If still empty, add fallback
+        if [ -z "$CHANGELOG" ]; then
+          CHANGELOG="- Minor improvements and bug fixes"$'\n'
+        fi
+        
+        echo "📝 Final changelog:"
+        echo "$CHANGELOG"
+        
+        # Save to file to avoid environment variable issues
+        echo "$CHANGELOG" > changelog.txt
+        echo "✅ Changelog generated and saved to file"
       id: generate_changelog
     
     - name: 🏷️ Push Git tag
@@ -168,12 +195,28 @@ jobs:
       with:
         script: |
           const version = '${{ steps.version.outputs.version }}';
+          const fs = require('fs');
           
           console.log(`🚀 Creating GitHub release for version ${version}...`);
           
+          // Read changelog from file
+          let changelogContent = '';
+          try {
+            changelogContent = fs.readFileSync('changelog.txt', 'utf8').trim();
+            console.log('📄 Changelog file content:', changelogContent);
+          } catch (error) {
+            console.log('⚠️ Could not read changelog file:', error.message);
+            changelogContent = '- Minor improvements and bug fixes';
+          }
+          
+          if (!changelogContent) {
+            console.log('⚠️ Changelog content is empty, using fallback');
+            changelogContent = '- Minor improvements and bug fixes';
+          }
+          
           const releaseBody = `## What's Changed
           
-          ${{ env.CHANGELOG }}
+          ${changelogContent}
           
           ## 🐳 Docker Images
           
@@ -191,6 +234,9 @@ jobs:
           \`\`\`bash
           docker run --rm -v ./out:/app/out fedorinoalex/kup-generator:${version}
           \`\`\``;
+          
+          console.log('📋 Release body preview:');
+          console.log(releaseBody);
           
           // Create the release
           const { data: release } = await github.rest.repos.createRelease({
