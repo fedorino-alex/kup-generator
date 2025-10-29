@@ -400,29 +400,35 @@ OVERALL_PERCENTAGE=$(awk "BEGIN {printf \"%.2f\", ($TOTAL_HOURS * 100) / $TOTAL_
 print_success
 print_success "PRs have been collected!"
 
+print_info # empty line
 if (( $(awk "BEGIN {print ($PERSONAL_PERCENTAGE > 70)}") )); then
     print_error
-    print_error "You worked hard for $TOTAL_HOURS hours of $PERSONAL_REPORTED_HOURS reported in this month and have personal busy $PERSONAL_PERCENTAGE%."
-    print_error "Sorry, but this is TOO MUCH (> 70%) and very suspicious!!!"
+    print_error "You worked hard for $TOTAL_HOURS hours of $PERSONAL_REPORTED_HOURS (including $PARAM_ABS days of absence) reported in this month and have personal busy $PERSONAL_PERCENTAGE%."
+    print_error "Sorry, but this is TOO MUCH (> 70%) and very suspicious, your report will be rejected by HRs!!!"
     print_error
+else
+    print_success
+    print_success "You worked for $TOTAL_HOURS hours of $PERSONAL_REPORTED_HOURS (including $PARAM_ABS days of absence) reported in this month and have personal busy $PERSONAL_PERCENTAGE%."
+    print_success "Nice."
+    print_success
 fi
 
 # Compare using awk for floating-point comparisons
 if (( $(awk "BEGIN {print ($OVERALL_PERCENTAGE < 25)}") )); then
     print_error
-    print_error "Total hours for this month:"
+    print_error "Total hours for this month (without your personal absences):"
     print_error "\t$TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($OVERALL_PERCENTAGE%)"
 elif (( $(awk "BEGIN {print ($OVERALL_PERCENTAGE < 50)}") )); then
     print_warning
-    print_warning "Total hours for this month:"
+    print_warning "Total hours for this month (without your personal absences):"
     print_warning "\t$TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($OVERALL_PERCENTAGE%)"
 elif (( $(awk "BEGIN {print ($OVERALL_PERCENTAGE > 70)}") )); then
     print_error
-    print_error "TOO MUCH!!! Total hours for this month:"
+    print_error "TOO MUCH!!! Total hours for this month (without your personal absences):"
     print_error "\t$TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($OVERALL_PERCENTAGE%)"
 else
     print_success
-    print_success "Total hours for this month:"
+    print_success "Total hours for this month (without your personal absences):"
     print_success "\t$TOTAL_HOURS of $TOTAL_EXPECTED_HOURS ($OVERALL_PERCENTAGE%)"
 fi
 
