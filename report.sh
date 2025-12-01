@@ -163,7 +163,7 @@ function check_pr_title() {
     HOURS=$(grep -iPo -m 1 "$KUP_PATTERN" <<< "$title" | head -n1 | xargs)
 
     print_debug # empty line
-    print_debug "PR title HOURS = [$HOURS]" 
+    print_debug "PR title HOURS = [$HOURS]" #
 
     if [ -n "$HOURS" ]; then
         print_success "Found $HOURS hours in PR Title"
