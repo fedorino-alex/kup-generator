@@ -51,7 +51,7 @@ export MANAGER_TITLE="Manager Title"
 ```bash
 export AUTHOR_EMAIL="your.email@example.com"
 export MANAGER_EMAIL="manager.email@example.com"
-export AZURE_DEVOPS_EXT_PAT="your-pat-token"
+export AZURE_DEVOPS_EXT_PAT="your-azure-pat-token"
 export AUTHOR_TITLE="Your Title"
 export MANAGER_TITLE="Manager Title"
 
@@ -65,8 +65,7 @@ export AUTHOR_EMAIL="your.email@example.com"
 export MANAGER_EMAIL="manager.email@example.com"
 export GITHUB_TOKEN="your-github-token"
 export GITHUB_ORG="your-org-name"
-export AUTHOR_NAME="Your Display Name"  # Optional, defaults to email
-export MANAGER_NAME="Manager Name"      # Optional, defaults to email
+export AZURE_DEVOPS_EXT_PAT="your-azure-pat-token"
 export AUTHOR_TITLE="Your Title"
 export MANAGER_TITLE="Manager Title"
 

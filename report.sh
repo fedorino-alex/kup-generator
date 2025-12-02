@@ -99,10 +99,10 @@ if [ ! -d ./out ]; then
 fi
 
 #variables
-AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
+AZURE_DEVOPS_AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
 
 print_debug "AZURE_DEVOPS_EXT_PAT = $AZURE_DEVOPS_EXT_PAT"
-print_debug "AUTH = $AUTH"
+print_debug "AUTH = $AZURE_DEVOPS_AUTH"
 
 TOTAL_HOURS="0.0"
 LINE_NUMBER="1"
@@ -189,7 +189,7 @@ function check_pr_tags() {
     local pr_url=$1
     local pr_tags
 
-    pr_tags=$(curl -s "$pr_url/labels" -H "Authorization: Basic $AUTH" | jq -c '.value[].name')
+    pr_tags=$(curl -s "$pr_url/labels" -H "Authorization: Basic $AZURE_DEVOPS_AUTH" | jq -c '.value[].name')
     HOURS=$(grep -iPo "$KUP_PATTERN" <<< "$pr_tags" | head -n1 | xargs)
 
     print_debug
@@ -211,7 +211,7 @@ function check_pr_commits() {
     local pr_hours=0.0
     local commit_hours=0
 
-    commits_response=$(curl -s "$pr_url/commits" -H "Authorization: Basic $AUTH")
+    commits_response=$(curl -s "$pr_url/commits" -H "Authorization: Basic $AZURE_DEVOPS_AUTH")
     commits=$(jq -c '.value[] | { id: .commitId, comment: .comment }' <<< "$commits_response")
 
     print_debug
@@ -296,7 +296,7 @@ function append_pr_line() {
 
     if [ -n "$workitem_api_url" ]; then
         # get work title from workitem
-        workitem=$(curl -s "$workitem_api_url?fields=System.Title,System.WorkItemType,System.Id,Custom.Owner" -H "Authorization: Basic $AUTH")
+        workitem=$(curl -s "$workitem_api_url?fields=System.Title,System.WorkItemType,System.Id,Custom.Owner" -H "Authorization: Basic $AZURE_DEVOPS_AUTH")
         workitem_href_text=$(jq -r '"\(.fields["System.WorkItemType"]) \(.fields["System.Id"])"' <<< "$workitem")
         workitem_href_url=$(jq -r '._links.html.href' <<< "$workitem")
         workitem_title=$(jq -r '.fields["System.Title"]' <<< "$workitem" | sed -e 's|[#$%&_{}~]|\\&|g')
