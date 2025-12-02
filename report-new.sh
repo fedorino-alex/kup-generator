@@ -1,17 +1,17 @@
 #!/bin/bash
 set -o pipefail
 
-# Source library files
-source "$(dirname "$0")/lib/common.sh"
-source "$(dirname "$0")/lib/azure-devops.sh"
-source "$(dirname "$0")/lib/github.sh"
-
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
 
 # parse options
 DEBUG=0
 SILENT=0
 SOURCES=() # array of sources to use
+
+# Source library files
+source "$(dirname "$0")/lib/common.sh"
+source "$(dirname "$0")/lib/azure-devops.sh"
+source "$(dirname "$0")/lib/github.sh"
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -65,13 +65,13 @@ fi
 for source in "${SOURCES[@]}"; do
     if [ "$source" == "azure" ]; then
         if ! validate_azure_devops_env 2>/dev/null; then
-            print_warning "Azure DevOps environment not configured, skipping Azure DevOps"
-            SOURCES=("${SOURCES[@]/$source}")
+            print_error "Azure DevOps environment not configured"
+            exit 1
         fi
     elif [ "$source" == "github" ]; then
         if ! validate_github_env 2>/dev/null; then
-            print_warning "GitHub environment not configured, skipping GitHub"
-            SOURCES=("${SOURCES[@]/$source}")
+            print_error "GitHub environment not configured"
+            exit 1
         fi
     fi
 done
@@ -93,7 +93,7 @@ declare -A KNOWN_COMMITS
 
 # reading input parameters
 PARAM_MONTH=$(date -d "$START_DATE" +%B)
-PARAM_DAYS=$(sed -n "$(date +%m)p" calendar.txt | cut -f2 -d '|')
+PARAM_DAYS=$(sed -n "$(date +%m)p" ./calendar.txt | cut -f2 -d '|')
 PARAM_ABS="0"
 
 if (( SILENT == 0 )); then
@@ -110,33 +110,17 @@ fi
 
 rm -f "_lines.txt"
 
+AZURE_DEVOPS_AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
+print_debug "AZURE_DEVOPS_EXT_PAT = $AZURE_DEVOPS_EXT_PAT"
+print_debug "AUTH = $AZURE_DEVOPS_AUTH"
+
 # Initialize display names
-AUTHOR_DISPLAY=""
-MANAGER_DISPLAY=""
+AUTHOR=$(get_azure_devops_author "$AUTHOR_EMAIL")
+AUTHOR_ID=$(jq -r '.id' <<< "$AUTHOR")
+AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< "$AUTHOR")
 
-# Get author and manager information from the first available source
-for source in "${SOURCES[@]}"; do
-    if [ "$source" == "azure" ] && [ -z "$AUTHOR_DISPLAY" ]; then
-        AUTH=$(echo -n "$AUTHOR_EMAIL:$AZURE_DEVOPS_EXT_PAT" | base64 -w 0)
-        print_debug "AZURE_DEVOPS_EXT_PAT = $AZURE_DEVOPS_EXT_PAT"
-        print_debug "AUTH = $AUTH"
-
-        AUTHOR=$(get_azure_devops_author "$AUTHOR_EMAIL")
-        AUTHOR_ID=$(jq -r '.id' <<< "$AUTHOR")
-        AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< "$AUTHOR")
-
-        MANAGER=$(get_azure_devops_manager "$MANAGER_EMAIL")
-        MANAGER_DISPLAY=$(jq -r '.user.displayName' <<< "$MANAGER")
-    elif [ "$source" == "github" ] && [ -z "$AUTHOR_DISPLAY" ]; then
-        print_debug "GITHUB_TOKEN = $GITHUB_TOKEN"
-        print_debug "GITHUB_ORG = $GITHUB_ORG"
-
-        # For GitHub, we need to extract the display name differently
-        # We'll use the email directly and get the name from API if needed
-        AUTHOR_DISPLAY=${AUTHOR_NAME:-$AUTHOR_EMAIL}
-        MANAGER_DISPLAY=${MANAGER_NAME:-$MANAGER_EMAIL}
-    fi
-done
+MANAGER=$(get_azure_devops_manager "$MANAGER_EMAIL")
+MANAGER_DISPLAY=$(jq -r '.user.displayName' <<< "$MANAGER")
 
 print_text
 print_text "AUTHOR: $AUTHOR_DISPLAY"
@@ -156,18 +140,19 @@ for source in "${SOURCES[@]}"; do
     print_text "========================================="
     
     if [ "$source" == "azure" ]; then
-        SOURCE_HOURS=$(collect_azure_devops_prs "$AUTHOR_ID" "$START_DATE" "$KUP_PATTERN" "$AUTH" "$MANAGER_EMAIL" "$MANAGER_DISPLAY" "$LINE_NUMBER")
+        SOURCE_HOURS=$(collect_azure_devops_prs "$AUTHOR_ID" "$START_DATE" "$KUP_PATTERN" "$AZURE_DEVOPS_AUTH" "$MANAGER_EMAIL" "$MANAGER_DISPLAY" "$LINE_NUMBER")
+
+        print_text
         print_success "Azure DevOps: Collected $SOURCE_HOURS hours"
-        TOTAL_HOURS=$(awk "BEGIN {printf \"%.2f\", $TOTAL_HOURS + $SOURCE_HOURS}")
-        
-        # Update line number for next source
-        LINE_NUMBER=$(wc -l < "_lines.txt" 2>/dev/null | awk '{print int($1/2) + 1}' || echo "$LINE_NUMBER")
     elif [ "$source" == "github" ]; then
         SOURCE_HOURS=$(collect_github_prs "$AUTHOR_EMAIL" "$START_DATE" "$KUP_PATTERN" "$GITHUB_TOKEN" "$GITHUB_ORG" "$MANAGER_EMAIL" "$MANAGER_DISPLAY" "$LINE_NUMBER")
+
+        print_text
         print_success "GitHub: Collected $SOURCE_HOURS hours"
-        TOTAL_HOURS=$(awk "BEGIN {printf \"%.2f\", $TOTAL_HOURS + $SOURCE_HOURS}")
-        
-        # Update line number for next source
+    fi
+
+    TOTAL_HOURS=$(awk "BEGIN {printf \"%.2f\", $TOTAL_HOURS + $SOURCE_HOURS}")
+    if [ -f "_lines.txt" ]; then
         LINE_NUMBER=$(wc -l < "_lines.txt" 2>/dev/null | awk '{print int($1/2) + 1}' || echo "$LINE_NUMBER")
     fi
 done

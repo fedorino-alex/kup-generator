@@ -232,31 +232,10 @@ function collect_azure_devops_prs() {
     local manager_email=$5
     local manager_display=$6
     local line_number=$7
-    local total_hours="0.0"
 
-    # Fast check: get total PR count across all projects
-    print_text "Fast check: Looking for user's PRs since $start_date..."
-    
+    local total_hours="0.0"
     local total_pr_count=0
-    PROJECTS=$(az devops project list | jq -r '.value[].name')
-    
-    # Quick scan for any PRs
-    while read -r project; do
-        [ -z "$project" ] && continue
-        local pr_count=$(az repos pr list -p "$project" --status completed --creator "$author_id" \
-            --query "[?closedDate > \`$start_date\`] | length(@)" -o tsv 2>/dev/null || echo "0")
-        total_pr_count=$((total_pr_count + pr_count))
-    done <<< "$PROJECTS"
-    
-    if [ "$total_pr_count" == "0" ]; then
-        print_warning "No completed PRs found for author ID $author_id since $start_date"
-        print_warning "Skipping Azure DevOps collection"
-        echo "0.0"
-        return 0
-    fi
-    
-    print_success "Found $total_pr_count completed PR(s) since $start_date"
-    
+
     # Now collect detailed information
     PROJECTS=$(az devops project list | jq -r '.value[].name')
     while read -r project; do
@@ -327,6 +306,7 @@ function collect_azure_devops_prs() {
 function get_azure_workitem_info() {
     local workitem_api_url=$1
     local auth=$2
+
     local workitem_json=""
     local workitem_href_text=""
     local workitem_href_url=""
@@ -349,7 +329,7 @@ function get_azure_workitem_info() {
     owner_name=$(jq -r '.fields["Custom.Owner"].displayName // empty' <<< "$workitem_json")
     
     # Return as JSON string for easy parsing
-    jq -n \
+    jq -nc \
         --arg href_text "$workitem_href_text" \
         --arg href_url "$workitem_href_url" \
         --arg title "$workitem_title" \

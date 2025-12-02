@@ -6,7 +6,7 @@ function print_error() {
     local ECHO_NC='\033[0m'           # No Color or just text
 
     if (( SILENT == 0 )); then
-        echo -e "${ECHO_RED}$1${ECHO_NC}"
+        echo -e "${ECHO_RED}$1${ECHO_NC}" >&2
     fi
 }
 
@@ -15,7 +15,7 @@ function print_info() {
     local ECHO_NC='\033[0m'           # No Color or just text
 
     if (( SILENT == 0 )); then
-        echo -e "${ECHO_CYAN}$1${ECHO_NC}"
+        echo -e "${ECHO_CYAN}$1${ECHO_NC}" >&2
     fi
 }
 
@@ -24,7 +24,7 @@ function print_warning() {
     local ECHO_NC='\033[0m'           # No Color or just text
 
     if (( SILENT == 0 )); then
-        echo -e "${ECHO_YELLOW}$1${ECHO_NC}"
+        echo -e "${ECHO_YELLOW}$1${ECHO_NC}" >&2
     fi
 }
 
@@ -33,7 +33,7 @@ function print_debug() {
     local ECHO_NC='\033[0m'           # No Color or just text
 
     if (( DEBUG == 1 && SILENT == 0 )); then
-        echo -e "${ECHO_GREY}DEBUG: $1${ECHO_NC}"
+        echo -e "${ECHO_GREY}DEBUG: $1${ECHO_NC}" >&2
     fi
 }
 
@@ -42,13 +42,13 @@ function print_success() {
     local ECHO_NC='\033[0m'           # No Color or just text
 
     if (( SILENT == 0 )); then
-        echo -e "${ECHO_GREEN}$1${ECHO_NC}"
+        echo -e "${ECHO_GREEN}$1${ECHO_NC}" >&2
     fi
 }
 
 function print_text() {
     if (( SILENT == 0 )); then
-        echo -e "$1"
+        echo -e "$1" >&2
     fi
 }
 
