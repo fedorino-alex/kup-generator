@@ -68,3 +68,4 @@ This project follows [Semantic Versioning](https://semver.org/):
 - **PATCH** version when you make backwards compatible bug fixes
 
 Version bumping is handled automatically by semantic-release based on your commit messages when PRs are merged to the main branch.
+
