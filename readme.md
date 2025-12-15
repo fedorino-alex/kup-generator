@@ -112,7 +112,8 @@ docker-compose run --rm kup --source github
 
 | Variable | Description | How to Get |
 |----------|-------------|------------|
-| `AZURE_DEVOPS_EXT_PAT` | Personal Access Token | [Azure DevOps → User Settings → Personal Access Tokens](https://dev.azure.com/) |
+| `AZURE_DEVOPS_EXT_PAT` | Personal Access Token (classic) | [Azure DevOps → User Settings → Personal Access Tokens](https://dev.azure.com/) |
+| `AZURE_DEVOPS_ORG` | Azure DevOps organization name | Your organization name (e.g., `pdd-ihsmarkit`) |
 
 **Required Azure DevOps PAT Scopes:**
 - Code (Read)
