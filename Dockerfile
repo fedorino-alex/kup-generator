@@ -26,16 +26,9 @@ WORKDIR /kup
 
 COPY ./lib/ ./lib
 COPY ./assets/ .
-
-COPY ./kup_report_template.tex .
-COPY ./accuris-logo.png .
-COPY ./calendar.txt .
-
 COPY ./report.sh .
-COPY ./report-new.sh .
 
 RUN chmod +x report.sh
-RUN chmod +x report-new.sh
 
-ENTRYPOINT [ "./report-new.sh" ]
+ENTRYPOINT [ "./report.sh" ]
 

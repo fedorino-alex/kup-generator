@@ -25,15 +25,6 @@ function validate_github_env() {
     return 0
 }
 
-function get_github_author() {
-    local author_email=$1
-    local github_token=$2
-    
-    # For GitHub, we'll use the email directly and get display name from PRs
-    # GitHub API doesn't have a simple user list like Azure DevOps
-    echo "$author_email"
-}
-
 function check_github_pr_title() {
     local pr=$1
     local kup_pattern=$2
@@ -95,6 +86,8 @@ function append_github_pr_line() {
     local workitem_id=""
     local workitem_cell=""
 
+    print_debug "PR = $pr"
+
     # get info about PR
     pr_number=$(echo "$pr" | jq -r '.number')
     pr_href_text="PR $pr_number"
@@ -112,7 +105,7 @@ function append_github_pr_line() {
 
     print_debug "WORKITEM_ID extracted: $workitem_id"
 
-    if [ -n "$workitem_id" ] && [ -n "$AZURE_DEVOPS_ORG" ] && [ -n "$AZURE_DEVOPS_EXT_PAT" ]; then
+    if [ -n "$workitem_id" ] && [ "$workitem_id" != "<NONE>" ] && [ -n "$AZURE_DEVOPS_ORG" ] && [ -n "$AZURE_DEVOPS_EXT_PAT" ]; then
         # Try to get full workitem information from Azure DevOps
         local workitem_api_url="https://dev.azure.com/$AZURE_DEVOPS_ORG/_apis/wit/workitems/$workitem_id"
         print_debug "Fetching workitem from: $workitem_api_url"
@@ -146,10 +139,9 @@ function append_github_pr_line() {
             local workitem_url="https://dev.azure.com/$AZURE_DEVOPS_ORG/_workitems/edit/$workitem_id"
             workitem_cell="{\small \href{$workitem_url}{WorkItem $workitem_id}: $pr_title}"
         fi
-    elif [ -n "$workitem_id" ]; then
-        # Workitem ID found but no Azure DevOps access configured
-        workitem_cell="{\small WorkItem $workitem_id: $pr_title}"
     else
+        print_warning "No valid workitem reference found in PR body or title"
+
         # No workitem found, use PR title as workitem
         workitem_cell="{\small $pr_title}"
     fi
@@ -167,7 +159,7 @@ function append_github_pr_line() {
     local owner_cell="{\small \href{mailto:$owner_email}{$owner_name}}"
 
     # PR merged date
-    pr_date=$(echo "$pr" | jq -r '.merged_at' | cut -d'T' -f1)
+    pr_date=$(echo "$pr" | jq -r '.closed_at' | cut -d'T' -f1)
     local pr_date_cell="{\small $pr_date}"
 
     print_debug "LINE_NUMBER = $line_number"
@@ -199,6 +191,7 @@ function collect_github_prs() {
 
     # Fast check: search for user's PRs across the org
     print_text "Fast check, Looking for users activity in $github_org..."
+    print_text
 
     # Convert start_date to ISO format for GitHub search (YYYY-MM-DD)
     formatted_date=$(date -d "$start_date" +%Y-%m-%d 2>/dev/null || echo "$start_date" | cut -d'T' -f1)
@@ -209,7 +202,7 @@ function collect_github_prs() {
         -H "Accept: application/vnd.github.v3+json" \
         "https://api.github.com/search/issues?q=org:$github_org+type:pr+author:@me+is:merged+merged:>=$formatted_date")
 
-    search_results_count=$(echo $search_results | jq -r '.total_count // 0')
+    search_results_count=$(echo "$search_results" | jq -r '.total_count // 0')
 
     if [ "$search_results_count" == "0" ]; then
         print_warning "No merged PRs found for $author_email in organization $github_org since $formatted_date"
@@ -224,7 +217,7 @@ function collect_github_prs() {
     # GitHub Search API returns max 100 items per page, max 1000 total
     local per_page=100
     local max_pages=$(( 1 + (search_results_count - 1) / per_page ))
-    
+
     # GitHub Search API limits to 1000 results (10 pages of 100)
     if [ $max_pages -gt 10 ]; then
         print_warning "More than 1000 PRs found. GitHub Search API limits results to 1000. Consider narrowing date range."
@@ -237,8 +230,8 @@ function collect_github_prs() {
 
         local page_results=$(curl -s -H "Authorization: token $github_token" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/search/issues?q=org:$github_org+type:pr+author:@me+created:>=$formatted_date&per_page=$per_page&page=$page")
-        
+            "https://api.github.com/search/issues?q=org:$github_org+type:pr+is:merged+author:@me+merged:>=$formatted_date&per_page=$per_page&page=$page")
+
         local prs=$(echo "$page_results" | jq -c '.items[]')
 
         if [ -z "$prs" ]; then

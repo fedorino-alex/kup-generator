@@ -2,6 +2,11 @@
 # Azure DevOps specific functions
 
 function validate_azure_devops_env() {
+    if [ -z "$AZURE_DEVOPS_ORG" ]; then
+        print_error "Environment variable AZURE_DEVOPS_ORG is not set"
+        return 1
+    fi
+
     if [ -z "$AZURE_DEVOPS_EXT_PAT" ]; then
         print_error "Environment variable AZURE_DEVOPS_EXT_PAT is not set"
         return 1
