@@ -198,3 +198,4 @@ docker-compose run --rm kup
 # Enable debug mode for detailed logs
 docker-compose run --rm kup --mode debug
 ```
+
