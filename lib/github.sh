@@ -206,67 +206,33 @@ function collect_github_prs() {
         -H "Accept: application/vnd.github.v3+json" \
         "https://api.github.com/search/issues?q=org:$github_org+type:pr+author:@me+is:merged+merged:>=$formatted_date" 2>&1)
     
-    # Check for HTTP status in JSON response (GitHub includes it in error responses)
+    # Check for API errors - GitHub returns status code and message in JSON on errors
     local http_code=$(echo "$search_results" | jq -r '.status // "200"')
-    
-    print_debug "HTTP Status Code: $http_code"
-
-    # Check HTTP status code
-    if [ "$http_code" != "200" ]; then
-        print_error "GitHub API HTTP Error: $http_code"
-        
-        case "$http_code" in
-            401)
-                print_error "❌ Unauthorized (401):"
-                print_error "   - Your GitHub token is invalid or expired"
-                print_error "   - Create a new token at: https://github.com/settings/tokens"
-                ;;
-            403)
-                print_error "❌ Forbidden (403):"
-                print_error "   - Token may lack required scopes (repo, read:org)"
-                print_error "   - SSO authorization may be required"
-                print_error "   - Rate limit may be exceeded"
-                ;;
-            404)
-                print_error "❌ Not Found (404):"
-                print_error "   - Organization '$github_org' may not exist or you don't have access"
-                ;;
-            422)
-                print_error "❌ Unprocessable Entity (422):"
-                print_error "   - Search query may be invalid"
-                print_error "   - Check organization name: $github_org"
-                ;;
-            *)
-                print_error "❌ Unexpected HTTP status code"
-                ;;
-        esac
-        
-        print_error ""
-        print_warning "Skipping GitHub collection due to HTTP error"
-        echo "$total_hours"
-        return 0
-    fi
-
-    # Check for API errors in JSON response
     local api_message=$(echo "$search_results" | jq -r '.message // empty')
     local api_error_detail=$(echo "$search_results" | jq -r '.errors[0].message // empty')
+    
+    print_debug "HTTP Status Code: $http_code"
+    print_debug "API Message: $api_message"
+    print_debug "API Error Detail: $api_error_detail"
     
     # Use detailed error message if available, otherwise use top-level message
     if [ -n "$api_error_detail" ]; then
         api_message="$api_error_detail"
     fi
-    
-    if [ -n "$api_message" ]; then
-        print_error "GitHub API Error: $api_message"
+
+    # Check if there's an error (non-200 status or error message present)
+    if [ "$http_code" != "200" ] || [ -n "$api_message" ]; then
+        print_error "GitHub API Error (HTTP $http_code): $api_message"
         print_error ""
         
-        # Specific error handling
-        if [[ "$api_message" == *"Bad credentials"* ]]; then
+        # Specific error handling based on status code and message content
+        if [[ "$api_message" == *"Bad credentials"* ]] || [ "$http_code" == "401" ]; then
             print_error "❌ Token authentication failed:"
-            print_error "   - Your GitHub token may be expired or invalid"
+            print_error "   - Your GitHub token is invalid or expired"
             print_error "   - Create a new token at: https://github.com/settings/tokens"
             print_error "   - Update GITHUB_TOKEN in your docker-compose.yaml"
-        elif [[ "$api_message" == *"cannot be searched"* ]] || [[ "$api_message" == *"do not have permission"* ]]; then
+            
+        elif [[ "$api_message" == *"cannot be searched"* ]] || [[ "$api_message" == *"do not have permission"* ]] || [ "$http_code" == "422" ]; then
             print_error "❌ Organization access denied:"
             print_error "   This usually means your token needs SSO authorization."
             print_error ""
@@ -279,12 +245,24 @@ function collect_github_prs() {
             print_error "   - Organization name is incorrect (current: $github_org)"
             print_error "   - You don't have access to this organization"
             print_error "   - Token lacks required scopes (repo, read:org)"
-        elif [[ "$api_message" == *"rate limit"* ]]; then
-            print_error "❌ GitHub API rate limit exceeded:"
-            print_error "   - Wait for rate limit to reset"
-            print_error "   - Check rate limit: https://api.github.com/rate_limit"
+            
+        elif [[ "$api_message" == *"rate limit"* ]] || [ "$http_code" == "403" ]; then
+            print_error "❌ Rate limit or permission issue:"
+            print_error "   - GitHub API rate limit may be exceeded"
+            print_error "   - Token may lack required scopes (repo, read:org)"
+            print_error "   - SSO authorization may be required for organization: $github_org"
+            print_error ""
+            print_error "   Check rate limit: https://api.github.com/rate_limit"
+            print_error "   Configure SSO: https://github.com/settings/tokens"
+            
+        elif [ "$http_code" == "404" ]; then
+            print_error "❌ Not Found (404):"
+            print_error "   - Organization '$github_org' may not exist"
+            print_error "   - You may not have access to this organization"
+            print_error "   - Verify the organization name is correct"
+            
         else
-            print_error "❌ Unknown GitHub API error"
+            print_error "❌ Unexpected error"
             print_error "   Please check your token permissions and organization access"
         fi
         
