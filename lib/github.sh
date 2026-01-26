@@ -196,11 +196,56 @@ function collect_github_prs() {
     # Convert start_date to ISO format for GitHub search (YYYY-MM-DD)
     formatted_date=$(date -d "$start_date" +%Y-%m-%d 2>/dev/null || echo "$start_date" | cut -d'T' -f1)
 
+    print_debug "GitHub Org: $github_org"
+    print_debug "Formatted Date: $formatted_date"
+    print_debug "Search Query: org:$github_org+type:pr+author:@me+is:merged+merged:>=$formatted_date"
+
     # Search for merged PRs by author across the org
     # GitHub PRs are searched via /search/issues endpoint with type:pr filter
     search_results=$(curl -s -H "Authorization: token $github_token" \
         -H "Accept: application/vnd.github.v3+json" \
         "https://api.github.com/search/issues?q=org:$github_org+type:pr+author:@me+is:merged+merged:>=$formatted_date")
+
+    # Check for API errors
+    local api_message=$(echo "$search_results" | jq -r '.message // empty')
+    
+    if [ -n "$api_message" ]; then
+        print_error "GitHub API Error: $api_message"
+        print_error ""
+        
+        # Specific error handling
+        if [[ "$api_message" == *"Bad credentials"* ]]; then
+            print_error "❌ Token authentication failed:"
+            print_error "   - Your GitHub token may be expired or invalid"
+            print_error "   - Create a new token at: https://github.com/settings/tokens"
+            print_error "   - Update GITHUB_TOKEN in your docker-compose.yaml"
+        elif [[ "$api_message" == *"cannot be searched"* ]]; then
+            print_error "❌ Organization access denied:"
+            print_error "   This usually means your token needs SSO authorization."
+            print_error ""
+            print_error "   To fix this:"
+            print_error "   1. Go to https://github.com/settings/tokens"
+            print_error "   2. Find your token and click 'Configure SSO'"
+            print_error "   3. Click 'Authorize' for organization: $github_org"
+            print_error ""
+            print_error "   Other possible causes:"
+            print_error "   - Organization name is incorrect (current: $github_org)"
+            print_error "   - You don't have access to this organization"
+            print_error "   - Token lacks required scopes (repo, read:org)"
+        elif [[ "$api_message" == *"rate limit"* ]]; then
+            print_error "❌ GitHub API rate limit exceeded:"
+            print_error "   - Wait for rate limit to reset"
+            print_error "   - Check rate limit: https://api.github.com/rate_limit"
+        else
+            print_error "❌ Unknown GitHub API error"
+            print_error "   Please check your token permissions and organization access"
+        fi
+        
+        print_error ""
+        print_warning "Skipping GitHub collection due to API error"
+        echo "$total_hours"
+        return 0
+    fi
 
     search_results_count=$(echo "$search_results" | jq -r '.total_count // 0')
 
@@ -230,7 +275,21 @@ function collect_github_prs() {
 
         local page_results=$(curl -s -H "Authorization: token $github_token" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/search/issues?q=org:$github_org+type:pr+is:merged+author:@me+merged:>=$formatted_date&per_page=$per_page&page=$page")
+            "https://api.github.com/search/issues?q=org:$github_org+type:pr+is:merged+merged:>=$formatted_date&per_page=$per_page&page=$page")
+
+        # Check for API errors in pagination
+        local page_error=$(echo "$page_results" | jq -r '.message // empty')
+        if [ -n "$page_error" ]; then
+            print_error "GitHub API Error on page $page: $page_error"
+            
+            if [[ "$page_error" == *"rate limit"* ]]; then
+                print_warning "Rate limit reached. Stopping collection."
+                break
+            else
+                print_warning "Skipping page $page due to error"
+                continue
+            fi
+        fi
 
         local prs=$(echo "$page_results" | jq -c '.items[]')
 
