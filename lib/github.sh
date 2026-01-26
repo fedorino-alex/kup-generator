@@ -202,12 +202,59 @@ function collect_github_prs() {
 
     # Search for merged PRs by author across the org
     # GitHub PRs are searched via /search/issues endpoint with type:pr filter
-    search_results=$(curl -s -H "Authorization: token $github_token" \
+    search_results=$(curl -sS -H "Authorization: token $github_token" \
         -H "Accept: application/vnd.github.v3+json" \
-        "https://api.github.com/search/issues?q=org:$github_org+type:pr+author:@me+is:merged+merged:>=$formatted_date")
+        "https://api.github.com/search/issues?q=org:$github_org+type:pr+author:@me+is:merged+merged:>=$formatted_date" 2>&1)
+    
+    # Check for HTTP status in JSON response (GitHub includes it in error responses)
+    local http_code=$(echo "$search_results" | jq -r '.status // "200"')
+    
+    print_debug "HTTP Status Code: $http_code"
 
-    # Check for API errors
+    # Check HTTP status code
+    if [ "$http_code" != "200" ]; then
+        print_error "GitHub API HTTP Error: $http_code"
+        
+        case "$http_code" in
+            401)
+                print_error "❌ Unauthorized (401):"
+                print_error "   - Your GitHub token is invalid or expired"
+                print_error "   - Create a new token at: https://github.com/settings/tokens"
+                ;;
+            403)
+                print_error "❌ Forbidden (403):"
+                print_error "   - Token may lack required scopes (repo, read:org)"
+                print_error "   - SSO authorization may be required"
+                print_error "   - Rate limit may be exceeded"
+                ;;
+            404)
+                print_error "❌ Not Found (404):"
+                print_error "   - Organization '$github_org' may not exist or you don't have access"
+                ;;
+            422)
+                print_error "❌ Unprocessable Entity (422):"
+                print_error "   - Search query may be invalid"
+                print_error "   - Check organization name: $github_org"
+                ;;
+            *)
+                print_error "❌ Unexpected HTTP status code"
+                ;;
+        esac
+        
+        print_error ""
+        print_warning "Skipping GitHub collection due to HTTP error"
+        echo "$total_hours"
+        return 0
+    fi
+
+    # Check for API errors in JSON response
     local api_message=$(echo "$search_results" | jq -r '.message // empty')
+    local api_error_detail=$(echo "$search_results" | jq -r '.errors[0].message // empty')
+    
+    # Use detailed error message if available, otherwise use top-level message
+    if [ -n "$api_error_detail" ]; then
+        api_message="$api_error_detail"
+    fi
     
     if [ -n "$api_message" ]; then
         print_error "GitHub API Error: $api_message"
@@ -219,7 +266,7 @@ function collect_github_prs() {
             print_error "   - Your GitHub token may be expired or invalid"
             print_error "   - Create a new token at: https://github.com/settings/tokens"
             print_error "   - Update GITHUB_TOKEN in your docker-compose.yaml"
-        elif [[ "$api_message" == *"cannot be searched"* ]]; then
+        elif [[ "$api_message" == *"cannot be searched"* ]] || [[ "$api_message" == *"do not have permission"* ]]; then
             print_error "❌ Organization access denied:"
             print_error "   This usually means your token needs SSO authorization."
             print_error ""
@@ -273,11 +320,30 @@ function collect_github_prs() {
     for ((page=1; page<=max_pages; page++)); do
         print_text "Fetching page $page/$max_pages..."
 
-        local page_results=$(curl -s -H "Authorization: token $github_token" \
+        # Get page results
+        local page_results=$(curl -sS -H "Authorization: token $github_token" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/search/issues?q=org:$github_org+type:pr+is:merged+merged:>=$formatted_date&per_page=$per_page&page=$page")
+            "https://api.github.com/search/issues?q=org:$github_org+type:pr+is:merged+merged:>=$formatted_date&per_page=$per_page&page=$page" 2>&1)
+        
+        # Check for HTTP status in JSON response
+        local page_http_code=$(echo "$page_results" | jq -r '.status // "200"')
+        
+        print_debug "Page $page HTTP Status: $page_http_code"
+        
+        # Check HTTP status for pagination
+        if [ "$page_http_code" != "200" ]; then
+            print_error "HTTP Error $page_http_code on page $page"
+            
+            if [ "$page_http_code" == "403" ]; then
+                print_warning "Rate limit or permission issue. Stopping collection."
+                break
+            else
+                print_warning "Skipping page $page due to HTTP error"
+                continue
+            fi
+        fi
 
-        # Check for API errors in pagination
+        # Check for API errors in pagination JSON
         local page_error=$(echo "$page_results" | jq -r '.message // empty')
         if [ -n "$page_error" ]; then
             print_error "GitHub API Error on page $page: $page_error"
