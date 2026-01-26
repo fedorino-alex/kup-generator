@@ -26,6 +26,7 @@ This project uses [Conventional Commits](https://www.conventionalcommits.org/) f
 docker pull fedorinoalex/kup-generator:latest
 docker run --rm -v ./out:/kup/out \
   -e AZURE_DEVOPS_EXT_PAT="your_azure_token" \
+  -e AZURE_DEVOPS_ORG="your_azure_org" \
   -e GITHUB_TOKEN="your_github_token" \
   -e GITHUB_ORG="your_org" \
   -e AUTHOR_EMAIL="your.email@company.com" \
@@ -49,6 +50,7 @@ environment:
   
   # Azure DevOps (optional - required if using Azure source)
   - AZURE_DEVOPS_EXT_PAT=your_azure_devops_pat
+  - AZURE_DEVOPS_ORG=your_azure_devops_org
   
   # GitHub (optional - required if using GitHub source)
   - GITHUB_TOKEN=your_github_token
@@ -131,8 +133,16 @@ docker-compose run --rm kup --source github
 - `repo` (Full control of private repositories)
 - `read:org` (Read org and team membership)
 
-**Configure SSO:**
-- Authorize organization
+**⚠️ IMPORTANT - SSO Authorization:**
+
+If your organization uses SSO (Single Sign-On), you **must** authorize your token:
+
+1. Go to [GitHub Tokens Settings](https://github.com/settings/tokens)
+2. Find your token in the list
+3. Click **"Configure SSO"** button next to it
+4. Click **"Authorize"** for your organization
+
+Without SSO authorization, you'll get an error: `"The listed users and repositories cannot be searched"`
 
 ## How It Works
 
