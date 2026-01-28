@@ -301,7 +301,7 @@ function collect_github_prs() {
         # Get page results
         local page_results=$(curl -sS -H "Authorization: token $github_token" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/search/issues?q=org:$github_org+type:pr+is:merged+merged:>=$formatted_date&per_page=$per_page&page=$page" 2>&1)
+            "https://api.github.com/search/issues?q=org:$github_org+type:pr+author:@me+is:merged+merged:>=$formatted_date&per_page=$per_page&page=$page" 2>&1)
         
         # Check for HTTP status in JSON response
         local page_http_code=$(echo "$page_results" | jq -r '.status // "200"')
