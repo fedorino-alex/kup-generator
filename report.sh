@@ -2,6 +2,7 @@
 set -o pipefail
 
 START_DATE=$(date +%Y-%m-01T00:00:00.000000+00:00)
+DAYS_BEFORE=0
 
 # parse options
 DEBUG=0
@@ -36,9 +37,23 @@ while [[ "$#" -gt 0 ]]; do
                 *) print_error "Invalid source: $1, values are 'azure', 'github', or 'both'"; exit 1 ;;
             esac
             ;;
+        --days-before)
+            shift
+            if [[ ! "$1" =~ ^[0-9]+$ ]]; then
+                print_error "Invalid --days-before value: '$1', must be a non-negative integer"
+                exit 1
+            fi
+            DAYS_BEFORE="$1"
+            ;;
     esac
     shift
 done
+
+# Shift START_DATE back by DAYS_BEFORE days if specified
+if (( DAYS_BEFORE > 0 )); then
+    START_DATE=$(date -d "$(date +%Y-%m-01) - $DAYS_BEFORE days" +%Y-%m-%dT00:00:00.000000+00:00)
+    print_debug "START_DATE shifted back by $DAYS_BEFORE days to $START_DATE"
+fi
 
 # Default to both sources if none specified
 if [ ${#SOURCES[@]} -eq 0 ]; then
