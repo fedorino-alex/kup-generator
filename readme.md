@@ -99,6 +99,20 @@ Specifies which source(s) to collect PRs from:
 docker-compose run --rm kup --source github
 ```
 
+### `--days-before <N>`
+
+Includes PRs merged up to N days before the start of the current month. Useful when the previous month's report was generated a few days before month-end, leaving some PRs uncaptured.
+
+For example, if the current month is February, `--days-before 3` shifts the search window start from February 1 to January 29, so PRs merged on Jan 29–31 are included in the February report.
+
+- Default: `0` (report starts from the 1st of the current month)
+- Only affects the data collection window — the report title and working days remain for the current month
+
+**Example:**
+```bash
+docker-compose run --rm kup --source github --days-before 3
+```
+
 ## Environment Variables
 
 ### Required (Common)
