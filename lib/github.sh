@@ -146,11 +146,7 @@ function append_github_pr_line() {
         workitem_cell="{\small $pr_title}"
     fi
 
-    # Get PR author as owner
-    owner_name=$(echo "$pr" | jq -r '.user.login')
-    owner_email=$(echo "$pr" | jq -r '.user.email // ""')
-    
-    # set manager as OWNER in case when we cannot find owner
+    # set manager as OWNER in case when we cannot find owner from the workitem
     if [ -z "$owner_email" ]; then
         owner_email=$manager_email
         owner_name=$manager_display
