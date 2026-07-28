@@ -1,6 +1,42 @@
 #!/bin/bash
 # Azure DevOps specific functions
 
+# Fetch a single user (as a jq object) by email, paging through the full
+# user list instead of relying on a single --top page. Emits nothing when
+# no matching user is found.
+function find_azure_devops_user_by_email() {
+    local email=$1
+    local page_size=500
+    local skip=0
+    local page
+    local count
+    local match
+
+    while true; do
+        page=$(az devops user list --top "$page_size" --skip "$skip")
+
+        # Stop if the CLI call failed or returned nothing.
+        if [ -z "$page" ]; then
+            break
+        fi
+
+        match=$(jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'"$email"'" | ascii_downcase))' - <<< "$page")
+        if [ -n "$match" ]; then
+            echo "$match"
+            return 0
+        fi
+
+        count=$(jq '.members | length' - <<< "$page")
+        if [ -z "$count" ] || [ "$count" -lt "$page_size" ]; then
+            break
+        fi
+
+        skip=$((skip + page_size))
+    done
+
+    return 1
+}
+
 function validate_azure_devops_env() {
     if [ -z "$AZURE_DEVOPS_ORG" ]; then
         print_error "Environment variable AZURE_DEVOPS_ORG is not set"
@@ -17,7 +53,7 @@ function validate_azure_devops_env() {
 function get_azure_devops_author() {
     local author_email=$1
     
-    AUTHOR=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'"$author_email"'" | ascii_downcase))' -)
+    AUTHOR=$(find_azure_devops_user_by_email "$author_email")
     AUTHOR_ID=$(jq -r '.id' <<< "$AUTHOR")
     AUTHOR_DISPLAY=$(jq -r '.user.displayName' <<< "$AUTHOR")
 
@@ -32,7 +68,7 @@ function get_azure_devops_author() {
 function get_azure_devops_manager() {
     local manager_email=$1
     
-    MANAGER=$(az devops user list --top 500 | jq '.members[] | select(.user.mailAddress | ascii_downcase == ("'"$manager_email"'" | ascii_downcase))' -)
+    MANAGER=$(find_azure_devops_user_by_email "$manager_email")
     MANAGER_DISPLAY=$(jq -r '.user.displayName' <<< "$MANAGER")
 
     if [ -z "$MANAGER" ]; then
